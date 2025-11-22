@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}Move History{% endblock %}
+{% block page_title %}Stock Move History{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filters {
+        background: white;
+        padding: 20px;
+        border-radius: 15px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .filter-group label {
+        display: block;
+        margin-bottom: 5px;
+        color: #7f8c8d;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .filter-group input,
+    .filter-group select {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #ecf0f1;
+        border-radius: 8px;
+        font-size: 14px;
+    }
+
+    .card {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table th {
+        text-align: left;
+        padding: 12px;
+        background: #f8f9fa;
+        color: #7f8c8d;
+        font-weight: 600;
+        font-size: 13px;
+        text-transform: uppercase;
+    }
+
+    .table td {
+        padding: 12px;
+        border-bottom: 1px solid #ecf0f1;
+    }
+
+    .table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge-receipt { background: #d4edda; color: #155724; }
+    .badge-delivery { background: #f8d7da; color: #721c24; }
+    .badge-transfer_in { background: #cfe2ff; color: #084298; }
+    .badge-transfer_out { background: #fff3cd; color: #856404; }
+    .badge-adjustment { background: #e7e7ff; color: #4a4a9c; }
+
+    .quantity-positive {
+        color: #28a745;
+        font-weight: 600;
+    }
+
+    .quantity-negative {
+        color: #dc3545;
+        font-weight: 600;
+    }
+
+    .export-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-secondary export-btn" onclick="exportToCSV()">
+    📊 Export CSV
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="filters">
+    <div class="filter-group">
+        <label>Product</label>
+        <select id="productFilter" onchange="loadHistory()">
+            <option value="">All Products</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Warehouse</label>
+        <select id="warehouseFilter" onchange="loadHistory()">
+            <option value="">All Warehouses</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Move Type</label>
+        <select id="moveTypeFilter" onchange="loadHistory()">
+            <option value="">All Types</option>
+            <option value="receipt">Receipt</option>
+            <option value="delivery">Delivery</option>
+            <option value="transfer_in">Transfer In</option>
+            <option value="transfer_out">Transfer Out</option>
+            <option value="adjustment">Adjustment</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Start Date</label>
+        <input type="date" id="startDate" onchange="loadHistory()">
+    </div>
+    <div class="filter-group">
+        <label>End Date</label>
+        <input type="date" id="endDate" onchange="loadHistory()">
+    </div>
+</div>
+
+<div class="card">
+    <table class="table" id="historyTable">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Product</th>
+                <th>Warehouse</th>
+                <th>Move Type</th>
+                <th>Reference</th>
+                <th>Quantity</th>
+            </tr>
+        </thead>
+        <tbody id="historyTableBody">
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 30px; color: #7f8c8d;">
+                    Loading history...
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let allMoves = [];
+
+    async function loadProducts() {
+        try {
+            const response = await apiCall('/api/products');
+            const products = await response.json();
+            
+            const productFilter = document.getElementById('productFilter');
+            products.forEach(p => {
+                productFilter.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+            });
+        } catch (error) {
+            console.error('Error loading products:', error);
+        }
+    }
+
+    async function loadWarehouses() {
+        try {
+            const response = await apiCall('/api/warehouses');
+            const warehouses = await response.json();
+            
+            const warehouseFilter = document.getElementById('warehouseFilter');
+            warehouses.forEach(wh => {
+                warehouseFilter.innerHTML += `<option value="${wh.id}">${wh.name}</option>`;
+            });
+        } catch (error) {
+            console.error('Error loading warehouses:', error);
+        }
+    }
+
+    async function loadHistory() {
+        try {
+            const product = document.getElementById('productFilter').value;
+            const warehouse = document.getElementById('warehouseFilter').value;
+            const moveType = document.getElementById('moveTypeFilter').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            let url = '/api/moves?limit=100';
+            if (product) url += `&product_id=${product}`;
+            if (warehouse) url += `&warehouse_id=${warehouse}`;
+            if (moveType) url += `&move_type=${moveType}`;
+            if (startDate) url += `&start_date=${startDate}`;
+            if (endDate) url += `&end_date=${endDate}`;
+
+            const response = await apiCall(url);
+            allMoves = await response.json();
+
+            const tbody = document.getElementById('historyTableBody');
+            
+            if (allMoves.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 30px; color: #7f8c8d;">No movements found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = allMoves.map(move => `
+                <tr>
+                    <td>${new Date(move.move_date).toLocaleString()}</td>
+                    <td>${move.product.name}</td>
+                    <td>${move.warehouse.name}</td>
+                    <td><span class="badge badge-${move.move_type}">${move.move_type.replace('_', ' ')}</span></td>
+                    <td>${move.reference || 'N/A'}</td>
+                    <td class="${move.quantity >= 0 ? 'quantity-positive' : 'quantity-negative'}">
+                        ${move.quantity >= 0 ? '+' : ''}${move.quantity}
+                    </td>
+                </tr>
+            `).join('');
+        } catch (error) {
+            console.error('Error loading history:', error);
+        }
+    }
+
+    function exportToCSV() {
+        if (allMoves.length === 0) {
+            alert('No data to export');
+            return;
+        }
+
+        let csv = 'Date,Product,SKU,Warehouse,Move Type,Reference,Quantity\n';
+        
+        allMoves.forEach(move => {
+            csv += `"${new Date(move.move_date).toLocaleString()}",`;
+            csv += `"${move.product.name}",`;
+            csv += `"${move.product.sku}",`;
+            csv += `"${move.warehouse.name}",`;
+            csv += `"${move.move_type}",`;
+            csv += `"${move.reference || 'N/A'}",`;
+            csv += `${move.quantity}\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `stock_history_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        loadProducts();
+        loadWarehouses();
+        loadHistory();
+    });
+</script>
+{% endblock %}

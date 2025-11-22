@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block title %}Warehouses{% endblock %}
+{% block page_title %}Warehouse Management{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-primary" onclick="openAddWarehouseModal()">
+    ➕ Add Warehouse
+</button>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .warehouses-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 20px;
+    }
+
+    .warehouse-card {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        transition: transform 0.3s;
+    }
+
+    .warehouse-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .warehouse-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 20px;
+    }
+
+    .warehouse-icon {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 30px;
+        margin-bottom: 15px;
+    }
+
+    .warehouse-title {
+        font-size: 20px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 5px;
+    }
+
+    .warehouse-code {
+        color: #7f8c8d;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .warehouse-location {
+        color: #7f8c8d;
+        font-size: 14px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .warehouse-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .stat-box {
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        color: #7f8c8d;
+        margin-top: 5px;
+    }
+
+    .warehouse-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .icon-btn {
+        flex: 1;
+        padding: 10px;
+        border: none;
+        background: #ecf0f1;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s;
+        font-weight: 600;
+    }
+
+    .icon-btn:hover {
+        background: #667eea;
+        color: white;
+    }
+
+    .badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge-active { background: #d4edda; color: #155724; }
+    .badge-inactive { background: #f8d7da; color: #721c24; }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        max-width: 500px;
+        width: 90%;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #ecf0f1;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #2c3e50;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .form-group input,
+    .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #ecf0f1;
+        border-radius: 10px;
+        font-size: 14px;
+    }
+
+    .close-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: #ecf0f1;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 18px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="warehouses-grid" id="warehousesGrid">
+    <p style="text-align: center; padding: 50px; color: #7f8c8d;">Loading warehouses...</p>
+</div>
+
+<!-- Add/Edit Warehouse Modal -->
+<div class="modal" id="warehouseModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modalTitle">Add Warehouse</h3>
+            <button class="close-btn" onclick="closeWarehouseModal()">✕</button>
+        </div>
+        <form id="warehouseForm">
+            <input type="hidden" id="warehouseId">
+            <div class="form-group">
+                <label>Warehouse Name *</label>
+                <input type="text" id="warehouseName" required>
+            </div>
+            <div class="form-group">
+                <label>Warehouse Code *</label>
+                <input type="text" id="warehouseCode" required placeholder="e.g., WH001">
+            </div>
+            <div class="form-group">
+                <label>Location</label>
+                <textarea id="warehouseLocation" rows="3" placeholder="Enter warehouse address..."></textarea>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 25px;">
+                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="closeWarehouseModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="flex: 1;">Save Warehouse</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    async function loadWarehouses() {
+        try {
+            const response = await apiCall('/api/warehouses');
+            const warehouses = await response.json();
+
+            const grid = document.getElementById('warehousesGrid');
+            
+            if (warehouses.length === 0) {
+                grid.innerHTML = '<p style="text-align: center; padding: 50px; color: #7f8c8d;">No warehouses found</p>';
+                return;
+            }
+
+            // Load stock stats for each warehouse
+            const warehousesWithStats = await Promise.all(warehouses.map(async (wh) => {
+                try {
+                    const stockResponse = await apiCall(`/api/stock?warehouse_id=${wh.id}`);
+                    const stocks = await stockResponse.json();
+                    return {
+                        ...wh,
+                        totalProducts: stocks.length,
+                        totalStock: stocks.reduce((sum, s) => sum + s.quantity, 0)
+                    };
+                } catch {
+                    return { ...wh, totalProducts: 0, totalStock: 0 };
+                }
+            }));
+
+            grid.innerHTML = warehousesWithStats.map(wh => `
+                <div class="warehouse-card">
+                    <div class="warehouse-icon">🏢</div>
+                    <div class="warehouse-header">
+                        <div>
+                            <div class="warehouse-title">${wh.name}</div>
+                            <div class="warehouse-code">Code: ${wh.code}</div>
+                        </div>
+                        <span class="badge ${wh.is_active ? 'badge-active' : 'badge-inactive'}">
+                            ${wh.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                    </div>
+                    <div class="warehouse-location">
+                        📍 ${wh.location || 'No location specified'}
+                    </div>
+                    <div class="warehouse-stats">
+                        <div class="stat-box">
+                            <div class="stat-value">${wh.totalProducts}</div>
+                            <div class="stat-label">Products</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${Math.round(wh.totalStock)}</div>
+                            <div class="stat-label">Total Stock</div>
+                        </div>
+                    </div>
+                    <div class="warehouse-actions">
+                        <button class="icon-btn" onclick="editWarehouse(${wh.id})">✏️ Edit</button>
+                        <button class="icon-btn" onclick="viewWarehouseStock(${wh.id})">👁️ View Stock</button>
+                    </div>
+                </div>
+            `).join('');
+        } catch (error) {
+            console.error('Error loading warehouses:', error);
+        }
+    }
+
+    function openAddWarehouseModal() {
+        document.getElementById('modalTitle').textContent = 'Add Warehouse';
+        document.getElementById('warehouseForm').reset();
+        document.getElementById('warehouseId').value = '';
+        document.getElementById('warehouseModal').classList.add('active');
+    }
+
+    function closeWarehouseModal() {
+        document.getElementById('warehouseModal').classList.remove('active');
+    }
+
+    async function editWarehouse(id) {
+        try {
+            const response = await apiCall(`/api/warehouses/${id}`);
+            const warehouse = await response.json();
+
+            document.getElementById('modalTitle').textContent = 'Edit Warehouse';
+            document.getElementById('warehouseId').value = warehouse.id;
+            document.getElementById('warehouseName').value = warehouse.name;
+            document.getElementById('warehouseCode').value = warehouse.code;
+            document.getElementById('warehouseLocation').value = warehouse.location || '';
+
+            document.getElementById('warehouseModal').classList.add('active');
+        } catch (error) {
+            alert('Error loading warehouse details');
+        }
+    }
+
+    async function viewWarehouseStock(id) {
+        window.location.href = `/products?warehouse_id=${id}`;
+    }
+
+    document.getElementById('warehouseForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const id = document.getElementById('warehouseId').value;
+        const data = {
+            name: document.getElementById('warehouseName').value,
+            code: document.getElementById('warehouseCode').value,
+            location: document.getElementById('warehouseLocation').value
+        };
+
+        try {
+            const url = id ? `/api/warehouses/${id}` : '/api/warehouses';
+            const method = id ? 'PUT' : 'POST';
+
+            const response = await apiCall(url, {
+                method: method,
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                alert(id ? 'Warehouse updated successfully' : 'Warehouse created successfully');
+                closeWarehouseModal();
+                loadWarehouses();
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Error saving warehouse');
+            }
+        } catch (error) {
+            alert('Error saving warehouse');
+        }
+    });
+
+    window.addEventListener('DOMContentLoaded', loadWarehouses);
+</script>
+{% endblock %}
