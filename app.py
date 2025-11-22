@@ -1,4 +1,8 @@
-from flask import Flask, request, jsonify
+# StockMaster - Inventory Management System Backend
+# Flask + PostgreSQL - Single File Implementation
+# Author: Generated for StockMaster Hackathon Project
+
+from flask import Flask, request, jsonify, render_template, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
@@ -338,6 +342,118 @@ class StockMove(db.Model):
             'quantity': self.quantity,
             'move_date': self.move_date.isoformat() if self.move_date else None
         }
+
+# ==================== HELPER FUNCTIONS ====================
+
+def generate_reference(prefix):
+    """Generate unique reference number"""
+    timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+    return f"{prefix}-{timestamp}"
+
+def update_stock(product_id, warehouse_id, quantity_change, move_type, reference, user_id):
+    """Update stock and create stock move"""
+    stock = Stock.query.filter_by(product_id=product_id, warehouse_id=warehouse_id).first()
+    
+    if not stock:
+        stock = Stock(product_id=product_id, warehouse_id=warehouse_id, quantity=0)
+        db.session.add(stock)
+    
+    stock.quantity += quantity_change
+    
+    # Create stock move record
+    move = StockMove(
+        product_id=product_id,
+        warehouse_id=warehouse_id,
+        move_type=move_type,
+        reference=reference,
+        quantity=quantity_change,
+        created_by=user_id
+    )
+    db.session.add(move)
+
+def check_low_stock():
+    """Check for low stock items"""
+    low_stock_items = []
+    stocks = Stock.query.join(Product).filter(Product.is_active == True).all()
+    
+    for stock in stocks:
+        available = stock.quantity - stock.reserved_quantity
+        if available <= stock.product.reorder_level:
+            low_stock_items.append({
+                'product': stock.product.to_dict(),
+                'warehouse': stock.warehouse.to_dict(),
+                'available_quantity': available,
+                'reorder_level': stock.product.reorder_level
+            })
+    
+    return low_stock_items
+
+# ==================== AUTHENTICATION ROUTES ====================
+
+@app.route('/api/auth/signup', methods=['POST'])
+def signup():
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        if not all(k in data for k in ['username', 'email', 'password']):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        # Check if user exists
+        if User.query.filter_by(username=data['username']).first():
+            return jsonify({'error': 'Username already exists'}), 400
+        
+        if User.query.filter_by(email=data['email']).first():
+            return jsonify({'error': 'Email already exists'}), 400
+        
+        # Create new user
+        user = User(
+            username=data['username'],
+            email=data['email'],
+            full_name=data.get('full_name', ''),
+            role=data.get('role', 'staff')
+        )
+        user.set_password(data['password'])
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        # Generate token
+        access_token = create_access_token(identity=user.id)
+        
+        return jsonify({
+            'message': 'User created successfully',
+            'user': user.to_dict(),
+            'access_token': access_token
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    try:
+        data = request.get_json()
+        
+        if not all(k in data for k in ['username', 'password']):
+            return jsonify({'error': 'Missing credentials'}), 400
+        
+        user = User.query.filter_by(username=data['username']).first()
+        
+        if not user or not user.check_password(data['password']):
+            return jsonify({'error': 'Invalid credentials'}), 401
+        
+        access_token = create_access_token(identity=user.id)
+        
+        return jsonify({
+            'message': 'Login successful',
+            'user': user.to_dict(),
+            'access_token': access_token
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 
