@@ -240,6 +240,15 @@
                     <input type="password" id="password" name="password" required>
                 </div>
 
+                <div class="form-group">
+                    <label for="role">Role</label>
+                    <select id="role" name="role" required>
+                        <option value="staff">Staff</option>
+                        <option value="manager">Manager</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+
                 <button type="submit" class="btn">Create Account</button>
             </form>
 
@@ -286,8 +295,8 @@
                 full_name: document.getElementById('fullName').value,
                 username: document.getElementById('username').value,
                 email: document.getElementById('email').value,
-                password: document.getElementById('password').value,
-                role: document.getElementById('role').value
+                password: document.getElementById('password').value
+                // role will default to 'staff' in backend
             };
 
             try {
