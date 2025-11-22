@@ -35,7 +35,7 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     full_name = db.Column(db.String(100))
-    role = db.Column(db.String(50), default='staff')  # admin, manager, staff
+    role = db.Column(db.String(50), default='admin')  # admin, manager, staff
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def set_password(self, password):
@@ -407,7 +407,7 @@ def signup():
             username=data['username'],
             email=data['email'],
             full_name=data.get('full_name', ''),
-            role=data.get('role', 'staff')
+            role=data.get('role', 'admin')
         )
         user.set_password(data['password'])
         
