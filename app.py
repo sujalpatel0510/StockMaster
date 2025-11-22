@@ -1381,6 +1381,10 @@ def products_page():
     """Render products page"""
     return render_template('products.html')
 
+@app.route('/receipts', methods=['GET'])
+def receipts_page():
+    """Render receipts page"""
+    return render_template('receipts.html')
 
 @app.route('/api/docs', methods=['GET'])
 def api_docs():
