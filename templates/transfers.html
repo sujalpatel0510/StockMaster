@@ -1,0 +1,508 @@
+{% extends "base.html" %}
+
+{% block title %}Internal Transfers{% endblock %}
+{% block page_title %}Internal Transfers{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-primary" onclick="openAddTransferModal()">
+    ➕ New Transfer
+</button>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filters {
+        background: white;
+        padding: 20px;
+        border-radius: 15px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .filter-group label {
+        display: block;
+        margin-bottom: 5px;
+        color: #7f8c8d;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .filter-group select {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #ecf0f1;
+        border-radius: 8px;
+        font-size: 14px;
+    }
+
+    .card {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table th {
+        text-align: left;
+        padding: 12px;
+        background: #f8f9fa;
+        color: #7f8c8d;
+        font-weight: 600;
+        font-size: 13px;
+        text-transform: uppercase;
+    }
+
+    .table td {
+        padding: 12px;
+        border-bottom: 1px solid #ecf0f1;
+    }
+
+    .badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge-draft { background: #e7f3ff; color: #0066cc; }
+    .badge-waiting { background: #fff3cd; color: #856404; }
+    .badge-ready { background: #cfe2ff; color: #084298; }
+    .badge-done { background: #d4edda; color: #155724; }
+    .badge-canceled { background: #f8d7da; color: #721c24; }
+
+    .action-btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+        font-weight: 600;
+        margin-right: 5px;
+    }
+
+    .action-btn-validate {
+        background: #28a745;
+        color: white;
+    }
+
+    .action-btn-view {
+        background: #17a2b8;
+        color: white;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        max-width: 800px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #ecf0f1;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #2c3e50;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #ecf0f1;
+        border-radius: 10px;
+        font-size: 14px;
+    }
+
+    .lines-section {
+        margin-top: 20px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 10px;
+    }
+
+    .line-item {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        display: grid;
+        grid-template-columns: 2fr 1fr auto;
+        gap: 15px;
+        align-items: center;
+    }
+
+    .remove-line-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: #dc3545;
+        color: white;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    .btn-sm {
+        padding: 8px 16px;
+        font-size: 13px;
+    }
+
+    .close-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: #ecf0f1;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 18px;
+    }
+
+    .transfer-arrow {
+        text-align: center;
+        font-size: 24px;
+        color: #667eea;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="filters">
+    <div class="filter-group">
+        <label>Status</label>
+        <select id="statusFilter" onchange="loadTransfers()">
+            <option value="">All Status</option>
+            <option value="draft">Draft</option>
+            <option value="waiting">Waiting</option>
+            <option value="ready">Ready</option>
+            <option value="done">Done</option>
+            <option value="canceled">Canceled</option>
+        </select>
+    </div>
+</div>
+
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Reference</th>
+                <th>From Warehouse</th>
+                <th>To Warehouse</th>
+                <th>Status</th>
+                <th>Scheduled Date</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="transfersTable">
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 30px; color: #7f8c8d;">
+                    Loading transfers...
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Add Transfer Modal -->
+<div class="modal" id="transferModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">New Internal Transfer</h3>
+            <button class="close-btn" onclick="closeTransferModal()">✕</button>
+        </div>
+        <form id="transferForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>From Warehouse *</label>
+                    <select id="fromWarehouse" required></select>
+                </div>
+                <div class="form-group">
+                    <label>To Warehouse *</label>
+                    <select id="toWarehouse" required></select>
+                </div>
+            </div>
+            <div class="transfer-arrow">→</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Scheduled Date</label>
+                    <input type="date" id="scheduledDate">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea id="notes" rows="2"></textarea>
+            </div>
+
+            <div class="lines-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h4>Products to Transfer</h4>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="addTransferLine()">
+                        ➕ Add Product
+                    </button>
+                </div>
+                <div id="transferLines"></div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 25px;">
+                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="closeTransferModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="flex: 1;">Create Transfer</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let warehouses = [];
+    let products = [];
+    let lineCounter = 0;
+
+    async function loadWarehouses() {
+        try {
+            const response = await apiCall('/api/warehouses');
+            warehouses = await response.json();
+            
+            const fromWarehouse = document.getElementById('fromWarehouse');
+            const toWarehouse = document.getElementById('toWarehouse');
+            
+            warehouses.forEach(wh => {
+                fromWarehouse.innerHTML += `<option value="${wh.id}">${wh.name}</option>`;
+                toWarehouse.innerHTML += `<option value="${wh.id}">${wh.name}</option>`;
+            });
+        } catch (error) {
+            console.error('Error loading warehouses:', error);
+        }
+    }
+
+    async function loadProducts() {
+        try {
+            const response = await apiCall('/api/products');
+            products = await response.json();
+        } catch (error) {
+            console.error('Error loading products:', error);
+        }
+    }
+
+    async function loadTransfers() {
+        try {
+            const status = document.getElementById('statusFilter').value;
+
+            let url = '/api/transfers?';
+            if (status) url += `status=${status}&`;
+
+            const response = await apiCall(url);
+            const transfers = await response.json();
+
+            const table = document.getElementById('transfersTable');
+            
+            if (transfers.length === 0) {
+                table.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 30px; color: #7f8c8d;">No transfers found</td></tr>';
+                return;
+            }
+
+            table.innerHTML = transfers.map(transfer => `
+                <tr>
+                    <td><strong>${transfer.reference}</strong></td>
+                    <td>${transfer.from_warehouse.name}</td>
+                    <td>${transfer.to_warehouse.name}</td>
+                    <td><span class="badge badge-${transfer.status}">${transfer.status}</span></td>
+                    <td>${transfer.scheduled_date ? new Date(transfer.scheduled_date).toLocaleDateString() : 'N/A'}</td>
+                    <td>${new Date(transfer.created_at).toLocaleDateString()}</td>
+                    <td>
+                        ${transfer.status !== 'done' ? `
+                            <button class="action-btn action-btn-validate" onclick="validateTransfer(${transfer.id})">✓ Validate</button>
+                        ` : ''}
+                        <button class="action-btn action-btn-view" onclick="viewTransfer(${transfer.id})">👁 View</button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (error) {
+            console.error('Error loading transfers:', error);
+        }
+    }
+
+    function openAddTransferModal() {
+        document.getElementById('transferForm').reset();
+        document.getElementById('transferLines').innerHTML = '';
+        lineCounter = 0;
+        addTransferLine();
+        document.getElementById('transferModal').classList.add('active');
+    }
+
+    function closeTransferModal() {
+        document.getElementById('transferModal').classList.remove('active');
+    }
+
+    function addTransferLine() {
+        lineCounter++;
+        const linesDiv = document.getElementById('transferLines');
+        
+        const lineHTML = `
+            <div class="line-item" id="line-${lineCounter}">
+                <select class="line-product" required>
+                    <option value="">Select Product</option>
+                    ${products.map(p => `<option value="${p.id}">${p.name} (${p.sku})</option>`).join('')}
+                </select>
+                <input type="number" class="line-quantity" placeholder="Quantity" step="0.01" required>
+                <button type="button" class="remove-line-btn" onclick="removeLine(${lineCounter})">✕</button>
+            </div>
+        `;
+        
+        linesDiv.innerHTML += lineHTML;
+    }
+
+    function removeLine(lineId) {
+        document.getElementById(`line-${lineId}`).remove();
+    }
+
+    async function validateTransfer(id) {
+        if (!confirm('Validate this transfer? This will move stock between warehouses.')) return;
+
+        try {
+            const response = await apiCall(`/api/transfers/${id}/validate`, { method: 'POST' });
+            if (response.ok) {
+                alert('Transfer validated successfully!');
+                loadTransfers();
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Error validating transfer');
+            }
+        } catch (error) {
+            alert('Error validating transfer');
+        }
+    }
+
+    async function viewTransfer(id) {
+        try {
+            const response = await apiCall(`/api/transfers/${id}`);
+            const transfer = await response.json();
+            
+            let details = `Reference: ${transfer.reference}\n`;
+            details += `From: ${transfer.from_warehouse.name}\n`;
+            details += `To: ${transfer.to_warehouse.name}\n`;
+            details += `Status: ${transfer.status}\n\n`;
+            details += `Products:\n`;
+            transfer.lines.forEach(line => {
+                details += `- ${line.product.name}: ${line.quantity} ${line.product.unit_of_measure}\n`;
+            });
+            
+            alert(details);
+        } catch (error) {
+            alert('Error loading transfer details');
+        }
+    }
+
+    document.getElementById('transferForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const fromWh = document.getElementById('fromWarehouse').value;
+        const toWh = document.getElementById('toWarehouse').value;
+
+        if (fromWh === toWh) {
+            alert('Source and destination warehouses must be different');
+            return;
+        }
+
+        const lineItems = document.querySelectorAll('.line-item');
+        const lines = [];
+
+        lineItems.forEach(item => {
+            const product = item.querySelector('.line-product').value;
+            const quantity = item.querySelector('.line-quantity').value;
+            
+            if (product && quantity) {
+                lines.push({
+                    product_id: parseInt(product),
+                    quantity: parseFloat(quantity)
+                });
+            }
+        });
+
+        if (lines.length === 0) {
+            alert('Please add at least one product');
+            return;
+        }
+
+        const data = {
+            from_warehouse_id: parseInt(fromWh),
+            to_warehouse_id: parseInt(toWh),
+            scheduled_date: document.getElementById('scheduledDate').value,
+            notes: document.getElementById('notes').value,
+            lines: lines
+        };
+
+        try {
+            const response = await apiCall('/api/transfers', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                alert('Transfer created successfully!');
+                closeTransferModal();
+                loadTransfers();
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Error creating transfer');
+            }
+        } catch (error) {
+            alert('Error creating transfer');
+        }
+    });
+
+    
