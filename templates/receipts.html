@@ -1,0 +1,534 @@
+{% extends "base.html" %}
+
+{% block title %}Receipts{% endblock %}
+{% block page_title %}Receipts (Incoming Stock){% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-primary" onclick="openAddReceiptModal()">
+    ➕ New Receipt
+</button>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filters {
+        background: white;
+        padding: 20px;
+        border-radius: 15px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .filter-group label {
+        display: block;
+        margin-bottom: 5px;
+        color: #7f8c8d;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .filter-group select {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #ecf0f1;
+        border-radius: 8px;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.3s;
+    }
+
+    .card {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table th {
+        text-align: left;
+        padding: 12px;
+        background: #f8f9fa;
+        color: #7f8c8d;
+        font-weight: 600;
+        font-size: 13px;
+        text-transform: uppercase;
+    }
+
+    .table td {
+        padding: 12px;
+        border-bottom: 1px solid #ecf0f1;
+    }
+
+    .table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge-draft { background: #e7f3ff; color: #0066cc; }
+    .badge-waiting { background: #fff3cd; color: #856404; }
+    .badge-ready { background: #cfe2ff; color: #084298; }
+    .badge-done { background: #d4edda; color: #155724; }
+    .badge-canceled { background: #f8d7da; color: #721c24; }
+
+    .action-btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s;
+        margin-right: 5px;
+    }
+
+    .action-btn-validate {
+        background: #28a745;
+        color: white;
+    }
+
+    .action-btn-view {
+        background: #17a2b8;
+        color: white;
+    }
+
+    .action-btn-delete {
+        background: #dc3545;
+        color: white;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        max-width: 800px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #ecf0f1;
+    }
+
+    .modal-title {
+        font-size: 22px;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .close-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: #ecf0f1;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 18px;
+        transition: all 0.3s;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #2c3e50;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #ecf0f1;
+        border-radius: 10px;
+        font-size: 14px;
+        outline: none;
+    }
+
+    .lines-section {
+        margin-top: 20px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 10px;
+    }
+
+    .lines-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .line-item {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        display: grid;
+        grid-template-columns: 2fr 1fr auto;
+        gap: 15px;
+        align-items: center;
+    }
+
+    .remove-line-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: #dc3545;
+        color: white;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    .btn-sm {
+        padding: 8px 16px;
+        font-size: 13px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="filters">
+    <div class="filter-group">
+        <label>Status</label>
+        <select id="statusFilter" onchange="loadReceipts()">
+            <option value="">All Status</option>
+            <option value="draft">Draft</option>
+            <option value="waiting">Waiting</option>
+            <option value="ready">Ready</option>
+            <option value="done">Done</option>
+            <option value="canceled">Canceled</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Warehouse</label>
+        <select id="warehouseFilter" onchange="loadReceipts()">
+            <option value="">All Warehouses</option>
+        </select>
+    </div>
+</div>
+
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Reference</th>
+                <th>Supplier</th>
+                <th>Warehouse</th>
+                <th>Status</th>
+                <th>Scheduled Date</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="receiptsTable">
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 30px; color: #7f8c8d;">
+                    Loading receipts...
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Add Receipt Modal -->
+<div class="modal" id="receiptModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">New Receipt</h3>
+            <button class="close-btn" onclick="closeReceiptModal()">✕</button>
+        </div>
+        <form id="receiptForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Supplier Name *</label>
+                    <input type="text" id="supplierName" required>
+                </div>
+                <div class="form-group">
+                    <label>Warehouse *</label>
+                    <select id="warehouseSelect" required></select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Scheduled Date</label>
+                    <input type="date" id="scheduledDate">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea id="notes" rows="3"></textarea>
+            </div>
+
+            <div class="lines-section">
+                <div class="lines-header">
+                    <h4>Products</h4>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="addReceiptLine()">
+                        ➕ Add Product
+                    </button>
+                </div>
+                <div id="receiptLines"></div>
+            </div>
+
+            <div class="form-actions" style="display: flex; gap: 10px; margin-top: 25px;">
+                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="closeReceiptModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="flex: 1;">Create Receipt</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let warehouses = [];
+    let products = [];
+    let lineCounter = 0;
+
+    async function loadWarehouses() {
+        try {
+            const response = await apiCall('/api/warehouses');
+            warehouses = await response.json();
+            
+            const warehouseFilter = document.getElementById('warehouseFilter');
+            const warehouseSelect = document.getElementById('warehouseSelect');
+            
+            warehouses.forEach(wh => {
+                warehouseFilter.innerHTML += `<option value="${wh.id}">${wh.name}</option>`;
+                warehouseSelect.innerHTML += `<option value="${wh.id}">${wh.name}</option>`;
+            });
+        } catch (error) {
+            console.error('Error loading warehouses:', error);
+        }
+    }
+
+    async function loadProducts() {
+        try {
+            const response = await apiCall('/api/products');
+            products = await response.json();
+        } catch (error) {
+            console.error('Error loading products:', error);
+        }
+    }
+
+    async function loadReceipts() {
+        try {
+            const status = document.getElementById('statusFilter').value;
+            const warehouse = document.getElementById('warehouseFilter').value;
+
+            let url = '/api/receipts?';
+            if (status) url += `status=${status}&`;
+            if (warehouse) url += `warehouse_id=${warehouse}&`;
+
+            const response = await apiCall(url);
+            const receipts = await response.json();
+
+            const table = document.getElementById('receiptsTable');
+            
+            if (receipts.length === 0) {
+                table.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 30px; color: #7f8c8d;">No receipts found</td></tr>';
+                return;
+            }
+
+            table.innerHTML = receipts.map(receipt => `
+                <tr>
+                    <td><strong>${receipt.reference}</strong></td>
+                    <td>${receipt.supplier || 'N/A'}</td>
+                    <td>${receipt.warehouse.name}</td>
+                    <td><span class="badge badge-${receipt.status}">${receipt.status}</span></td>
+                    <td>${receipt.scheduled_date ? new Date(receipt.scheduled_date).toLocaleDateString() : 'N/A'}</td>
+                    <td>${new Date(receipt.created_at).toLocaleDateString()}</td>
+                    <td>
+                        ${receipt.status !== 'done' ? `
+                            <button class="action-btn action-btn-validate" onclick="validateReceipt(${receipt.id})">✓ Validate</button>
+                        ` : ''}
+                        <button class="action-btn action-btn-view" onclick="viewReceipt(${receipt.id})">👁 View</button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (error) {
+            console.error('Error loading receipts:', error);
+        }
+    }
+
+    function openAddReceiptModal() {
+        document.getElementById('receiptForm').reset();
+        document.getElementById('receiptLines').innerHTML = '';
+        lineCounter = 0;
+        addReceiptLine();
+        document.getElementById('receiptModal').classList.add('active');
+    }
+
+    function closeReceiptModal() {
+        document.getElementById('receiptModal').classList.remove('active');
+    }
+
+    function addReceiptLine() {
+        lineCounter++;
+        const linesDiv = document.getElementById('receiptLines');
+        
+        const lineHTML = `
+            <div class="line-item" id="line-${lineCounter}">
+                <select class="line-product" required>
+                    <option value="">Select Product</option>
+                    ${products.map(p => `<option value="${p.id}">${p.name} (${p.sku})</option>`).join('')}
+                </select>
+                <input type="number" class="line-quantity" placeholder="Quantity" step="0.01" required>
+                <button type="button" class="remove-line-btn" onclick="removeLine(${lineCounter})">✕</button>
+            </div>
+        `;
+        
+        linesDiv.innerHTML += lineHTML;
+    }
+
+    function removeLine(lineId) {
+        document.getElementById(`line-${lineId}`).remove();
+    }
+
+    async function validateReceipt(id) {
+        if (!confirm('Validate this receipt? This will update stock levels.')) return;
+
+        try {
+            const response = await apiCall(`/api/receipts/${id}/validate`, { method: 'POST' });
+            if (response.ok) {
+                alert('Receipt validated successfully!');
+                loadReceipts();
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Error validating receipt');
+            }
+        } catch (error) {
+            alert('Error validating receipt');
+        }
+    }
+
+    async function viewReceipt(id) {
+        try {
+            const response = await apiCall(`/api/receipts/${id}`);
+            const receipt = await response.json();
+            
+            let details = `Reference: ${receipt.reference}\n`;
+            details += `Supplier: ${receipt.supplier}\n`;
+            details += `Warehouse: ${receipt.warehouse.name}\n`;
+            details += `Status: ${receipt.status}\n\n`;
+            details += `Products:\n`;
+            receipt.lines.forEach(line => {
+                details += `- ${line.product.name}: ${line.quantity_expected} ${line.product.unit_of_measure}\n`;
+            });
+            
+            alert(details);
+        } catch (error) {
+            alert('Error loading receipt details');
+        }
+    }
+
+    document.getElementById('receiptForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const lineItems = document.querySelectorAll('.line-item');
+        const lines = [];
+
+        lineItems.forEach(item => {
+            const product = item.querySelector('.line-product').value;
+            const quantity = item.querySelector('.line-quantity').value;
+            
+            if (product && quantity) {
+                lines.push({
+                    product_id: parseInt(product),
+                    quantity: parseFloat(quantity)
+                });
+            }
+        });
+
+        if (lines.length === 0) {
+            alert('Please add at least one product');
+            return;
+        }
+
+        const data = {
+            supplier: document.getElementById('supplierName').value,
+            warehouse_id: parseInt(document.getElementById('warehouseSelect').value),
+            scheduled_date: document.getElementById('scheduledDate').value,
+            notes: document.getElementById('notes').value,
+            lines: lines
+        };
+
+        try {
+            const response = await apiCall('/api/receipts', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                alert('Receipt created successfully!');
+                closeReceiptModal();
+                loadReceipts();
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Error creating receipt');
+            }
+        } catch (error) {
+            alert('Error creating receipt');
+        }
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+        loadWarehouses();
+        loadProducts();
+        loadReceipts();
+    });
+</script>
+{% endblock %}
