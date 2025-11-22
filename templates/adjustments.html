@@ -1,0 +1,424 @@
+{% extends "base.html" %}
+
+{% block title %}Stock Adjustments{% endblock %}
+{% block page_title %}Stock Adjustments{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-primary" onclick="openAddAdjustmentModal()">
+    ➕ New Adjustment
+</button>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filters {
+        background: white;
+        padding: 20px;
+        border-radius: 15px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .filter-group label {
+        display: block;
+        margin-bottom: 5px;
+        color: #7f8c8d;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .filter-group select {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #ecf0f1;
+        border-radius: 8px;
+        font-size: 14px;
+    }
+
+    .card {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table th {
+        text-align: left;
+        padding: 12px;
+        background: #f8f9fa;
+        color: #7f8c8d;
+        font-weight: 600;
+        font-size: 13px;
+        text-transform: uppercase;
+    }
+
+    .table td {
+        padding: 12px;
+        border-bottom: 1px solid #ecf0f1;
+    }
+
+    .badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge-positive { background: #d4edda; color: #155724; }
+    .badge-negative { background: #f8d7da; color: #721c24; }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #ecf0f1;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #2c3e50;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #ecf0f1;
+        border-radius: 10px;
+        font-size: 14px;
+    }
+
+    .close-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: #ecf0f1;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 18px;
+    }
+
+    .current-stock {
+        padding: 15px;
+        background: #e7f3ff;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+
+    .current-stock-label {
+        font-size: 12px;
+        color: #7f8c8d;
+        margin-bottom: 5px;
+    }
+
+    .current-stock-value {
+        font-size: 32px;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="filters">
+    <div class="filter-group">
+        <label>Warehouse</label>
+        <select id="warehouseFilter" onchange="loadAdjustments()">
+            <option value="">All Warehouses</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Product</label>
+        <select id="productFilter" onchange="loadAdjustments()">
+            <option value="">All Products</option>
+        </select>
+    </div>
+</div>
+
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Reference</th>
+                <th>Product</th>
+                <th>Warehouse</th>
+                <th>Old Qty</th>
+                <th>New Qty</th>
+                <th>Adjustment</th>
+                <th>Type</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody id="adjustmentsTable">
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 30px; color: #7f8c8d;">
+                    Loading adjustments...
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Add Adjustment Modal -->
+<div class="modal" id="adjustmentModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">New Stock Adjustment</h3>
+            <button class="close-btn" onclick="closeAdjustmentModal()">✕</button>
+        </div>
+        <form id="adjustmentForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Warehouse *</label>
+                    <select id="warehouseSelect" required onchange="updateCurrentStock()"></select>
+                </div>
+                <div class="form-group">
+                    <label>Product *</label>
+                    <select id="productSelect" required onchange="updateCurrentStock()"></select>
+                </div>
+            </div>
+
+            <div class="current-stock" id="currentStockDisplay" style="display: none;">
+                <div class="current-stock-label">Current Stock</div>
+                <div class="current-stock-value" id="currentStockValue">0</div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>New Quantity *</label>
+                    <input type="number" id="newQuantity" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Adjustment Type</label>
+                    <select id="adjustmentType">
+                        <option value="correction">Correction</option>
+                        <option value="damage">Damage</option>
+                        <option value="loss">Loss</option>
+                        <option value="found">Found</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Reason *</label>
+                <textarea id="reason" rows="3" required placeholder="Explain the reason for this adjustment..."></textarea>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 25px;">
+                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="closeAdjustmentModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="flex: 1;">Create Adjustment</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let warehouses = [];
+    let products = [];
+
+    async function loadWarehouses() {
+        try {
+            const response = await apiCall('/api/warehouses');
+            warehouses = await response.json();
+            
+            const warehouseFilter = document.getElementById('warehouseFilter');
+            const warehouseSelect = document.getElementById('warehouseSelect');
+            
+            warehouses.forEach(wh => {
+                warehouseFilter.innerHTML += `<option value="${wh.id}">${wh.name}</option>`;
+                warehouseSelect.innerHTML += `<option value="${wh.id}">${wh.name}</option>`;
+            });
+        } catch (error) {
+            console.error('Error loading warehouses:', error);
+        }
+    }
+
+    async function loadProducts() {
+        try {
+            const response = await apiCall('/api/products');
+            products = await response.json();
+            
+            const productFilter = document.getElementById('productFilter');
+            const productSelect = document.getElementById('productSelect');
+            
+            products.forEach(p => {
+                productFilter.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+                productSelect.innerHTML += `<option value="${p.id}">${p.name} (${p.sku})</option>`;
+            });
+        } catch (error) {
+            console.error('Error loading products:', error);
+        }
+    }
+
+    async function loadAdjustments() {
+        try {
+            const warehouse = document.getElementById('warehouseFilter').value;
+            const product = document.getElementById('productFilter').value;
+
+            let url = '/api/adjustments?';
+            if (warehouse) url += `warehouse_id=${warehouse}&`;
+            if (product) url += `product_id=${product}&`;
+
+            const response = await apiCall(url);
+            const adjustments = await response.json();
+
+            const table = document.getElementById('adjustmentsTable');
+            
+            if (adjustments.length === 0) {
+                table.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 30px; color: #7f8c8d;">No adjustments found</td></tr>';
+                return;
+            }
+
+            table.innerHTML = adjustments.map(adj => `
+                <tr>
+                    <td><strong>${adj.reference}</strong></td>
+                    <td>${adj.product.name}</td>
+                    <td>${adj.warehouse.name}</td>
+                    <td>${adj.old_quantity}</td>
+                    <td>${adj.new_quantity}</td>
+                    <td>
+                        <span class="badge ${adj.adjustment >= 0 ? 'badge-positive' : 'badge-negative'}">
+                            ${adj.adjustment >= 0 ? '+' : ''}${adj.adjustment}
+                        </span>
+                    </td>
+                    <td>${adj.adjustment_type}</td>
+                    <td>${new Date(adj.created_at).toLocaleDateString()}</td>
+                </tr>
+            `).join('');
+        } catch (error) {
+            console.error('Error loading adjustments:', error);
+        }
+    }
+
+    async function updateCurrentStock() {
+        const warehouseId = document.getElementById('warehouseSelect').value;
+        const productId = document.getElementById('productSelect').value;
+
+        if (!warehouseId || !productId) {
+            document.getElementById('currentStockDisplay').style.display = 'none';
+            return;
+        }
+
+        try {
+            const response = await apiCall(`/api/stock?warehouse_id=${warehouseId}&product_id=${productId}`);
+            const stocks = await response.json();
+
+            if (stocks.length > 0) {
+                document.getElementById('currentStockValue').textContent = stocks[0].quantity;
+                document.getElementById('currentStockDisplay').style.display = 'block';
+            } else {
+                document.getElementById('currentStockValue').textContent = '0';
+                document.getElementById('currentStockDisplay').style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Error loading current stock:', error);
+        }
+    }
+
+    function openAddAdjustmentModal() {
+        document.getElementById('adjustmentForm').reset();
+        document.getElementById('currentStockDisplay').style.display = 'none';
+        document.getElementById('adjustmentModal').classList.add('active');
+    }
+
+    function closeAdjustmentModal() {
+        document.getElementById('adjustmentModal').classList.remove('active');
+    }
+
+    document.getElementById('adjustmentForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const data = {
+            warehouse_id: parseInt(document.getElementById('warehouseSelect').value),
+            product_id: parseInt(document.getElementById('productSelect').value),
+            new_quantity: parseFloat(document.getElementById('newQuantity').value),
+            adjustment_type: document.getElementById('adjustmentType').value,
+            reason: document.getElementById('reason').value
+        };
+
+        try {
+            const response = await apiCall('/api/adjustments', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                alert('Adjustment created successfully!');
+                closeAdjustmentModal();
+                loadAdjustments();
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Error creating adjustment');
+            }
+        } catch (error) {
+            alert('Error creating adjustment');
+        }
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+        loadWarehouses();
+        loadProducts();
+        loadAdjustments();
+    });
+</script>
+{% endblock %}
