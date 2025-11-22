@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Up - StockMaster</title>
+    <title>Login - StockMaster</title>
     <style>
         * {
             margin: 0;
@@ -26,7 +26,7 @@
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             overflow: hidden;
-            max-width: 1000px;
+            max-width: 900px;
             width: 100%;
             display: flex;
         }
@@ -96,7 +96,7 @@
             font-size: 14px;
         }
 
-        input, select {
+        input {
             width: 100%;
             padding: 14px;
             border: 2px solid #e1e8ed;
@@ -106,7 +106,7 @@
             outline: none;
         }
 
-        input:focus, select:focus {
+        input:focus {
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
@@ -147,34 +147,6 @@
             text-decoration: underline;
         }
 
-        .feature-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .feature-icon {
-            width: 50px;
-            height: 50px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 15px;
-            font-size: 24px;
-        }
-
-        .feature-text h3 {
-            font-size: 18px;
-            margin-bottom: 5px;
-        }
-
-        .feature-text p {
-            font-size: 14px;
-            opacity: 0.9;
-        }
-
         .alert {
             padding: 12px;
             border-radius: 8px;
@@ -192,6 +164,19 @@
             background: #efe;
             color: #3c3;
             border: 1px solid #cfc;
+        }
+
+        .illustration {
+            width: 100%;
+            max-width: 300px;
+            height: 300px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 100px;
+            margin-bottom: 30px;
         }
 
         @media (max-width: 768px) {
@@ -214,93 +199,49 @@
                 <div class="logo-icon">SM</div>
                 StockMaster
             </div>
-            <h2>Create Account</h2>
-            <p class="subtitle">Start managing your inventory efficiently</p>
+            <h2>Welcome Back</h2>
+            <p class="subtitle">Sign in to your account to continue</p>
 
             <div id="alertBox"></div>
 
-            <form id="signupForm">
-                <div class="form-group">
-                    <label for="fullName">Full Name</label>
-                    <input type="text" id="fullName" name="full_name" required>
-                </div>
-
+            <form id="loginForm">
                 <div class="form-group">
                     <label for="username">Username</label>
-                    <input type="text" id="username" name="username" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="email">Email Address</label>
-                    <input type="email" id="email" name="email" required>
+                    <input type="text" id="username" name="username" required placeholder="Enter your username">
                 </div>
 
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required>
+                    <input type="password" id="password" name="password" required placeholder="Enter your password">
                 </div>
 
-                <div class="form-group">
-                    <label for="role">Role</label>
-                    <select id="role" name="role" required>
-                        <option value="staff">Staff</option>
-                        <option value="manager">Manager</option>
-                        <option value="admin">Admin</option>
-                    </select>
-                </div>
-
-                <button type="submit" class="btn">Create Account</button>
+                <button type="submit" class="btn">Sign In</button>
             </form>
 
             <div class="auth-link">
-                Already have an account? <a href="/login">Sign In</a>
+                Don't have an account? <a href="/signup">Create Account</a>
             </div>
         </div>
 
         <div class="auth-right">
-            <h2 style="margin-bottom: 40px; color: white;">Welcome to StockMaster</h2>
-            
-            <div class="feature-item">
-                <div class="feature-icon">📦</div>
-                <div class="feature-text">
-                    <h3>Inventory Management</h3>
-                    <p>Track all your products in real-time</p>
-                </div>
-            </div>
-
-            <div class="feature-item">
-                <div class="feature-icon">📊</div>
-                <div class="feature-text">
-                    <h3>Analytics Dashboard</h3>
-                    <p>Get insights into your stock levels</p>
-                </div>
-            </div>
-
-            <div class="feature-item">
-                <div class="feature-icon">🏢</div>
-                <div class="feature-text">
-                    <h3>Multi-Warehouse</h3>
-                    <p>Manage multiple locations easily</p>
-                </div>
-            </div>
+            <div class="illustration">📦</div>
+            <h2 style="color: white; margin-bottom: 15px;">StockMaster</h2>
+            <p style="text-align: center; opacity: 0.9;">Streamline your inventory management with our powerful platform. Track, manage, and optimize your stock levels in real-time.</p>
         </div>
     </div>
 
     <script>
-        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const alertBox = document.getElementById('alertBox');
             const formData = {
-                full_name: document.getElementById('fullName').value,
                 username: document.getElementById('username').value,
-                email: document.getElementById('email').value,
-                password: document.getElementById('password').value,
-                role: document.getElementById('role').value
+                password: document.getElementById('password').value
             };
 
             try {
-                const response = await fetch('/api/auth/signup', {
+                const response = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -313,7 +254,7 @@
                 if (response.ok) {
                     localStorage.setItem('token', data.access_token);
                     localStorage.setItem('user', JSON.stringify(data.user));
-                    alertBox.innerHTML = '<div class="alert alert-success">Account created successfully! Redirecting...</div>';
+                    alertBox.innerHTML = '<div class="alert alert-success">Login successful! Redirecting...</div>';
                     setTimeout(() => {
                         window.location.href = '/dashboard';
                     }, 1500);
