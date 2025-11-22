@@ -494,8 +494,140 @@ def update_profile():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+# ==================== DASHBOARD ROUTES ====================
+
+@app.route('/api/dashboard', methods=['GET'])
+@jwt_required()
+def get_dashboard():
+    try:
+        # Total products
+        total_products = Product.query.filter_by(is_active=True).count()
+        
+        # Low stock items
+        low_stock = check_low_stock()
+        low_stock_count = len(low_stock)
+        
+        # Out of stock
+        out_of_stock = Stock.query.filter(Stock.quantity <= 0).count()
+        
+        # Pending receipts
+        pending_receipts = Receipt.query.filter(
+            Receipt.status.in_(['draft', 'waiting', 'ready'])
+        ).count()
+        
+        # Pending deliveries
+        pending_deliveries = Delivery.query.filter(
+            Delivery.status.in_(['draft', 'waiting', 'ready'])
+        ).count()
+        
+        # Internal transfers scheduled
+        scheduled_transfers = InternalTransfer.query.filter(
+            InternalTransfer.status.in_(['draft', 'waiting', 'ready'])
+        ).count()
+        
+        # Recent moves (last 10)
+        recent_moves = StockMove.query.order_by(
+            StockMove.move_date.desc()
+        ).limit(10).all()
+        
+        return jsonify({
+            'kpis': {
+                'total_products': total_products,
+                'low_stock_items': low_stock_count,
+                'out_of_stock_items': out_of_stock,
+                'pending_receipts': pending_receipts,
+                'pending_deliveries': pending_deliveries,
+                'scheduled_transfers': scheduled_transfers
+            },
+            'low_stock_alerts': low_stock[:5],  # Top 5 low stock items
+            'recent_moves': [move.to_dict() for move in recent_moves]
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+
+# ==================== HEALTH CHECK ====================
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.utcnow().isoformat()
+    }), 200
+
+@app.route('/', methods=['GET'])
+def root():
+    """Redirect to login page"""
+    return redirect(url_for('login_page'))
+
+@app.route('/login', methods=['GET'])
+def login_page():
+    """Render login page"""
+    return render_template('login.html')
+
+@app.route('/signup', methods=['GET'])
+def signup_page():
+    """Render signup page"""
+    return render_template('signup.html')
+
+@app.route('/dashboard', methods=['GET'])
+def dashboard_page():
+    """Render dashboard page"""
+    return render_template('dashboard.html')
+
+@app.route('/api/docs', methods=['GET'])
+def api_docs():
+    """API Documentation endpoint"""
+    return jsonify({
+        'message': 'StockMaster API - Backend Only',
+        'version': '1.0.0',
+        'note': 'This is a REST API backend. Create your frontend templates separately.',
+        'endpoints': {
+            'auth': '/api/auth/*',
+            'dashboard': '/api/dashboard',
+            'products': '/api/products',
+            'warehouses': '/api/warehouses',
+            'receipts': '/api/receipts',
+            'deliveries': '/api/deliveries',
+            'transfers': '/api/transfers',
+            'adjustments': '/api/adjustments',
+            'stock': '/api/stock',
+            'moves': '/api/moves'
+        }
+    }), 200
+
+# ==================== ERROR HANDLERS ====================
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({'error': 'Endpoint not found'}), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    db.session.rollback()
+    return jsonify({'error': 'Internal server error'}), 500
+
+@jwt.expired_token_loader
+def expired_token_callback(jwt_header, jwt_payload):
+    return jsonify({'error': 'Token has expired'}), 401
+
+@jwt.invalid_token_loader
+def invalid_token_callback(error):
+    return jsonify({'error': 'Invalid token'}), 401
+
+@jwt.unauthorized_loader
+def missing_token_callback(error):
+    return jsonify({'error': 'Authorization token is missing'}), 401
+
 
 # ==================== RUN APP ====================
 
 if __name__ == '__main__':
+    # Auto-initialize database on startup
+    with app.app_context():
+        db.create_all()
+        print("✅ Database tables initialized!")
+    
     app.run(debug=True, host='0.0.0.0', port=5000)
