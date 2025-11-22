@@ -1,0 +1,512 @@
+{% extends "base.html" %}
+
+{% block title %}Deliveries{% endblock %}
+{% block page_title %}Deliveries (Outgoing Stock){% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-primary" onclick="openAddDeliveryModal()">
+    ➕ New Delivery
+</button>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filters {
+        background: white;
+        padding: 20px;
+        border-radius: 15px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .filter-group label {
+        display: block;
+        margin-bottom: 5px;
+        color: #7f8c8d;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .filter-group select {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #ecf0f1;
+        border-radius: 8px;
+        font-size: 14px;
+    }
+
+    .card {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table th {
+        text-align: left;
+        padding: 12px;
+        background: #f8f9fa;
+        color: #7f8c8d;
+        font-weight: 600;
+        font-size: 13px;
+        text-transform: uppercase;
+    }
+
+    .table td {
+        padding: 12px;
+        border-bottom: 1px solid #ecf0f1;
+    }
+
+    .badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge-draft { background: #e7f3ff; color: #0066cc; }
+    .badge-waiting { background: #fff3cd; color: #856404; }
+    .badge-ready { background: #cfe2ff; color: #084298; }
+    .badge-done { background: #d4edda; color: #155724; }
+    .badge-canceled { background: #f8d7da; color: #721c24; }
+
+    .action-btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+        font-weight: 600;
+        margin-right: 5px;
+    }
+
+    .action-btn-validate {
+        background: #28a745;
+        color: white;
+    }
+
+    .action-btn-view {
+        background: #17a2b8;
+        color: white;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        max-width: 800px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #ecf0f1;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #2c3e50;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #ecf0f1;
+        border-radius: 10px;
+        font-size: 14px;
+    }
+
+    .lines-section {
+        margin-top: 20px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 10px;
+    }
+
+    .line-item {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        display: grid;
+        grid-template-columns: 2fr 1fr auto;
+        gap: 15px;
+        align-items: center;
+    }
+
+    .remove-line-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: #dc3545;
+        color: white;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    .btn-sm {
+        padding: 8px 16px;
+        font-size: 13px;
+    }
+
+    .close-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: #ecf0f1;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 18px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="filters">
+    <div class="filter-group">
+        <label>Status</label>
+        <select id="statusFilter" onchange="loadDeliveries()">
+            <option value="">All Status</option>
+            <option value="draft">Draft</option>
+            <option value="waiting">Waiting</option>
+            <option value="ready">Ready</option>
+            <option value="done">Done</option>
+            <option value="canceled">Canceled</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Warehouse</label>
+        <select id="warehouseFilter" onchange="loadDeliveries()">
+            <option value="">All Warehouses</option>
+        </select>
+    </div>
+</div>
+
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Reference</th>
+                <th>Customer</th>
+                <th>Warehouse</th>
+                <th>Status</th>
+                <th>Scheduled Date</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="deliveriesTable">
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 30px; color: #7f8c8d;">
+                    Loading deliveries...
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Add Delivery Modal -->
+<div class="modal" id="deliveryModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">New Delivery Order</h3>
+            <button class="close-btn" onclick="closeDeliveryModal()">✕</button>
+        </div>
+        <form id="deliveryForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Customer Name *</label>
+                    <input type="text" id="customerName" required>
+                </div>
+                <div class="form-group">
+                    <label>Warehouse *</label>
+                    <select id="warehouseSelect" required></select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Scheduled Date</label>
+                    <input type="date" id="scheduledDate">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Shipping Address</label>
+                <textarea id="shippingAddress" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea id="notes" rows="2"></textarea>
+            </div>
+
+            <div class="lines-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h4>Products</h4>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="addDeliveryLine()">
+                        ➕ Add Product
+                    </button>
+                </div>
+                <div id="deliveryLines"></div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 25px;">
+                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="closeDeliveryModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="flex: 1;">Create Delivery</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let warehouses = [];
+    let products = [];
+    let lineCounter = 0;
+
+    async function loadWarehouses() {
+        try {
+            const response = await apiCall('/api/warehouses');
+            warehouses = await response.json();
+            
+            const warehouseFilter = document.getElementById('warehouseFilter');
+            const warehouseSelect = document.getElementById('warehouseSelect');
+            
+            warehouses.forEach(wh => {
+                warehouseFilter.innerHTML += `<option value="${wh.id}">${wh.name}</option>`;
+                warehouseSelect.innerHTML += `<option value="${wh.id}">${wh.name}</option>`;
+            });
+        } catch (error) {
+            console.error('Error loading warehouses:', error);
+        }
+    }
+
+    async function loadProducts() {
+        try {
+            const response = await apiCall('/api/products');
+            products = await response.json();
+        } catch (error) {
+            console.error('Error loading products:', error);
+        }
+    }
+
+    async function loadDeliveries() {
+        try {
+            const status = document.getElementById('statusFilter').value;
+            const warehouse = document.getElementById('warehouseFilter').value;
+
+            let url = '/api/deliveries?';
+            if (status) url += `status=${status}&`;
+            if (warehouse) url += `warehouse_id=${warehouse}&`;
+
+            const response = await apiCall(url);
+            const deliveries = await response.json();
+
+            const table = document.getElementById('deliveriesTable');
+            
+            if (deliveries.length === 0) {
+                table.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 30px; color: #7f8c8d;">No deliveries found</td></tr>';
+                return;
+            }
+
+            table.innerHTML = deliveries.map(delivery => `
+                <tr>
+                    <td><strong>${delivery.reference}</strong></td>
+                    <td>${delivery.customer || 'N/A'}</td>
+                    <td>${delivery.warehouse.name}</td>
+                    <td><span class="badge badge-${delivery.status}">${delivery.status}</span></td>
+                    <td>${delivery.scheduled_date ? new Date(delivery.scheduled_date).toLocaleDateString() : 'N/A'}</td>
+                    <td>${new Date(delivery.created_at).toLocaleDateString()}</td>
+                    <td>
+                        ${delivery.status !== 'done' ? `
+                            <button class="action-btn action-btn-validate" onclick="validateDelivery(${delivery.id})">✓ Validate</button>
+                        ` : ''}
+                        <button class="action-btn action-btn-view" onclick="viewDelivery(${delivery.id})">👁 View</button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (error) {
+            console.error('Error loading deliveries:', error);
+        }
+    }
+
+    function openAddDeliveryModal() {
+        document.getElementById('deliveryForm').reset();
+        document.getElementById('deliveryLines').innerHTML = '';
+        lineCounter = 0;
+        addDeliveryLine();
+        document.getElementById('deliveryModal').classList.add('active');
+    }
+
+    function closeDeliveryModal() {
+        document.getElementById('deliveryModal').classList.remove('active');
+    }
+
+    function addDeliveryLine() {
+        lineCounter++;
+        const linesDiv = document.getElementById('deliveryLines');
+        
+        const lineHTML = `
+            <div class="line-item" id="line-${lineCounter}">
+                <select class="line-product" required>
+                    <option value="">Select Product</option>
+                    ${products.map(p => `<option value="${p.id}">${p.name} (${p.sku})</option>`).join('')}
+                </select>
+                <input type="number" class="line-quantity" placeholder="Quantity" step="0.01" required>
+                <button type="button" class="remove-line-btn" onclick="removeLine(${lineCounter})">✕</button>
+            </div>
+        `;
+        
+        linesDiv.innerHTML += lineHTML;
+    }
+
+    function removeLine(lineId) {
+        document.getElementById(`line-${lineId}`).remove();
+    }
+
+    async function validateDelivery(id) {
+        if (!confirm('Validate this delivery? This will reduce stock levels.')) return;
+
+        try {
+            const response = await apiCall(`/api/deliveries/${id}/validate`, { method: 'POST' });
+            if (response.ok) {
+                alert('Delivery validated successfully!');
+                loadDeliveries();
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Error validating delivery');
+            }
+        } catch (error) {
+            alert('Error validating delivery');
+        }
+    }
+
+    async function viewDelivery(id) {
+        try {
+            const response = await apiCall(`/api/deliveries/${id}`);
+            const delivery = await response.json();
+            
+            let details = `Reference: ${delivery.reference}\n`;
+            details += `Customer: ${delivery.customer}\n`;
+            details += `Warehouse: ${delivery.warehouse.name}\n`;
+            details += `Status: ${delivery.status}\n\n`;
+            details += `Products:\n`;
+            delivery.lines.forEach(line => {
+                details += `- ${line.product.name}: ${line.quantity_ordered} ${line.product.unit_of_measure}\n`;
+            });
+            
+            alert(details);
+        } catch (error) {
+            alert('Error loading delivery details');
+        }
+    }
+
+    document.getElementById('deliveryForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const lineItems = document.querySelectorAll('.line-item');
+        const lines = [];
+
+        lineItems.forEach(item => {
+            const product = item.querySelector('.line-product').value;
+            const quantity = item.querySelector('.line-quantity').value;
+            
+            if (product && quantity) {
+                lines.push({
+                    product_id: parseInt(product),
+                    quantity: parseFloat(quantity)
+                });
+            }
+        });
+
+        if (lines.length === 0) {
+            alert('Please add at least one product');
+            return;
+        }
+
+        const data = {
+            customer: document.getElementById('customerName').value,
+            warehouse_id: parseInt(document.getElementById('warehouseSelect').value),
+            scheduled_date: document.getElementById('scheduledDate').value,
+            shipping_address: document.getElementById('shippingAddress').value,
+            notes: document.getElementById('notes').value,
+            lines: lines
+        };
+
+        try {
+            const response = await apiCall('/api/deliveries', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                alert('Delivery created successfully!');
+                closeDeliveryModal();
+                loadDeliveries();
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Error creating delivery');
+            }
+        } catch (error) {
+            alert('Error creating delivery');
+        }
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+        loadWarehouses();
+        loadProducts();
+        loadDeliveries();
+    });
+</script>
+{% endblock %}
