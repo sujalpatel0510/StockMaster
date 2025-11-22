@@ -1,429 +1,85 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Dashboard{% endblock %} - StockMaster</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f7fa;
-            color: #333;
-        }
-
-        .app-container {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        /* Sidebar Styles */
-        .sidebar {
-            width: 260px;
-            background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
-            color: white;
-            position: fixed;
-            height: 100vh;
-            overflow-y: auto;
-            transition: transform 0.3s;
-            z-index: 1000;
-        }
-
-        .sidebar-header {
-            padding: 25px 20px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .logo {
-            display: flex;
-            align-items: center;
-            font-size: 24px;
-            font-weight: bold;
-        }
-
-        .logo-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 12px;
-            font-size: 20px;
-        }
-
-        .sidebar-menu {
-            padding: 20px 0;
-        }
-
-        .menu-item {
-            padding: 12px 20px;
-            display: flex;
-            align-items: center;
-            color: rgba(255, 255, 255, 0.8);
-            text-decoration: none;
-            transition: all 0.3s;
-            cursor: pointer;
-        }
-
-        .menu-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            padding-left: 25px;
-        }
-
-        .menu-item.active {
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-left: 4px solid #fff;
-        }
-
-        .menu-icon {
-            width: 24px;
-            margin-right: 12px;
-            font-size: 20px;
-        }
-
-        .sidebar-footer {
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            padding: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .user-profile {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-        }
-
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 10px;
-            font-weight: bold;
-        }
-
-        .user-info {
-            flex: 1;
-        }
-
-        .user-name {
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .user-role {
-            font-size: 12px;
-            opacity: 0.7;
-        }
-
-        /* Main Content */
-        .main-content {
-            flex: 1;
-            margin-left: 260px;
-            min-height: 100vh;
-        }
-
-        /* Header */
-        .header {
-            background: white;
-            padding: 20px 30px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .header-title h1 {
-            font-size: 24px;
-            color: #2c3e50;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-secondary {
-            background: #ecf0f1;
-            color: #2c3e50;
-        }
-
-        .btn-secondary:hover {
-            background: #d5dbdd;
-        }
-
-        /* Content Area */
-        .content {
-            padding: 30px;
-        }
-
-        /* Mobile Menu Toggle */
-        .menu-toggle {
-            display: none;
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            z-index: 1001;
-            background: #2c3e50;
-            color: white;
-            border: none;
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 20px;
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%);
-            }
-
-            .sidebar.active {
-                transform: translateX(0);
-            }
-
-            .main-content {
-                margin-left: 0;
-            }
-
-            .menu-toggle {
-                display: block;
-            }
-
-            .content {
-                padding: 20px;
-                padding-top: 70px;
-            }
-
-            .header {
-                padding-left: 70px;
-            }
-        }
-
-        /* Notifications Badge */
-        .notification-badge {
-            position: relative;
-        }
-
-        .notification-badge::after {
-            content: '3';
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background: #e74c3c;
-            color: white;
-            font-size: 10px;
-            padding: 2px 5px;
-            border-radius: 10px;
-            font-weight: bold;
-        }
-    </style>
-    {% block extra_css %}{% endblock %}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Dashboard{% endblock %} - StockMaster</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+background: #f5f7fa;
+color: #333;
+}
+.app-container { display: flex; min-height: 100vh; }
+.sidebar {
+width: 260px; background: linear-gradient(180deg,#2c3e50,#34495e);
+color:white; position:fixed; height:100vh; overflow-y:auto; z-index:1000;
+}
+.sidebar-header { padding:25px 20px; border-bottom:1px solid rgba(255,255,255,0.1); }
+.logo { display:flex; align-items:center; font-size:24px; font-weight:bold; }
+.logo-icon {
+width:40px; height:40px; background:linear-gradient(135deg,#667eea,#764ba2);
+border-radius:10px; margin-right:12px; display:flex; align-items:center; justify-content:center;
+font-size:20px;
+}
+.sidebar-menu { padding:20px 0; }
+.menu-item {
+padding:12px 20px; display:flex; align-items:center;
+color:rgba(255,255,255,0.8); text-decoration:none; transition:0.3s;
+}
+.menu-item:hover { background:rgba(255,255,255,0.1); padding-left:25px; color:white; }
+.menu-item.active { background:rgba(255,255,255,0.15); border-left:3px solid #667eea; color:white; }
+.user-section {
+position:absolute; bottom:0; width:100%; padding:20px;
+border-top:1px solid rgba(255,255,255,0.1);
+}
+.user-profile { display:flex; align-items:center; }
+.user-avatar {
+width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,#667eea,#764ba2);
+display:flex; align-items:center; justify-content:center; margin-right:12px; font-weight:bold;
+}
+.logout-btn {
+width:100%; padding:10px; background:rgba(255,255,255,0.1);
+border-radius:8px; border:1px solid rgba(255,255,255,0.2); color:white;
+cursor:pointer; transition:0.3s; margin-top:15px;
+}
+.logout-btn:hover { background:rgba(255,255,255,0.2); }
+.main-content { margin-left:260px; flex:1; padding:30px; }
+{% block extra_css %}{% endblock %}
+</style>
 </head>
 <body>
-    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+<div class="app-container">
+<aside class="sidebar" id="sidebar">
+<div class="sidebar-header">
+<div class="logo"><div class="logo-icon">SM</div>StockMaster</div>
+</div>
+<nav class="sidebar-menu">
+<a href="/dashboard" class="menu-item" data-page="dashboard">📊 Dashboard</a>
+<a href="/products" class="menu-item" data-page="products">📦 Products</a>
+<a href="/warehouses" class="menu-item" data-page="warehouses">🏢 Warehouses</a>
+<a href="/receipts" class="menu-item" data-page="receipts">📥 Receipts</a>
+<a href="/deliveries" class="menu-item" data-page="deliveries">📤 Deliveries</a>
+<a href="/transfers" class="menu-item" data-page="transfers">🔄 Transfers</a>
+<a href="/adjustments" class="menu-item" data-page="adjustments">⚙️ Adjustments</a>
+<a href="/reports" class="menu-item" data-page="reports">📈 Reports</a>
+</nav>
+<div class="user-section">
+<div class="user-profile">
+<div class="user-avatar" id="userAvatar">U</div>
+<div><h4 id="userName">User</h4><p id="userRole">Staff</p></div>
+</div>
+<button class="logout-btn" onclick="logout()">Logout</button>
+</div>
+</aside>
+<main class="main-content">
+<h1>{% block page_title %}Dashboard{% endblock %}</h1>
+{% block content %}{% endblock %}
+</main>
+</div>
 
-    <div class="app-container">
-        <!-- Sidebar -->
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">
-                    <div class="logo-icon">SM</div>
-                    <span>StockMaster</span>
-                </div>
-            </div>
 
-            <nav class="sidebar-menu">
-                <a href="/dashboard" class="menu-item" id="menu-dashboard">
-                    <span class="menu-icon">📊</span>
-                    <span>Dashboard</span>
-                </a>
-                <a href="/products" class="menu-item" id="menu-products">
-                    <span class="menu-icon">📦</span>
-                    <span>Products</span>
-                </a>
-                <a href="/receipts" class="menu-item" id="menu-receipts">
-                    <span class="menu-icon">📥</span>
-                    <span>Receipts</span>
-                </a>
-                <a href="/deliveries" class="menu-item" id="menu-deliveries">
-                    <span class="menu-icon">📤</span>
-                    <span>Deliveries</span>
-                </a>
-                <a href="/transfers" class="menu-item" id="menu-transfers">
-                    <span class="menu-icon">🔄</span>
-                    <span>Internal Transfers</span>
-                </a>
-                <a href="/adjustments" class="menu-item" id="menu-adjustments">
-                    <span class="menu-icon">⚖️</span>
-                    <span>Adjustments</span>
-                </a>
-                <a href="/history" class="menu-item" id="menu-history">
-                    <span class="menu-icon">📜</span>
-                    <span>Move History</span>
-                </a>
-                <a href="/warehouses" class="menu-item" id="menu-warehouses">
-                    <span class="menu-icon">🏢</span>
-                    <span>Warehouses</span>
-                </a>
-                <a href="/profile" class="menu-item" id="menu-profile">
-                    <span class="menu-icon">👤</span>
-                    <span>My Profile</span>
-                </a>
-            </nav>
-
-            <div class="sidebar-footer">
-                <div class="user-profile">
-                    <div class="user-avatar" id="userAvatar">U</div>
-                    <div class="user-info">
-                        <div class="user-name" id="userName">Loading...</div>
-                        <div class="user-role" id="userRole">User</div>
-                    </div>
-                </div>
-                <a href="#" onclick="logout()" class="menu-item" style="margin-top: 10px;">
-                    <span class="menu-icon">🚪</span>
-                    <span>Logout</span>
-                </a>
-            </div>
-        </aside>
-
-        <!-- Main Content -->
-        <main class="main-content">
-            <header class="header">
-                <div class="header-title">
-                    <h1>{% block page_title %}Dashboard{% endblock %}</h1>
-                </div>
-                <div class="header-actions">
-                    {% block header_actions %}
-                    {% endblock %}
-                </div>
-            </header>
-
-            <div class="content">
-                {% block content %}
-                {% endblock %}
-            </div>
-        </main>
-    </div>
-
-    <script>
-        // Initialize user data
-        function initializeUser() {
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            if (user.full_name) {
-                document.getElementById('userName').textContent = user.full_name;
-                document.getElementById('userRole').textContent = user.role || 'Staff';
-                document.getElementById('userAvatar').textContent = user.full_name.charAt(0).toUpperCase();
-            }
-        }
-
-        // Toggle sidebar on mobile
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('active');
-        }
-
-        // Logout function
-        function logout() {
-            if (confirm('Are you sure you want to logout?')) {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                window.location.href = '/login';
-            }
-        }
-
-        // Check authentication
-        function checkAuth() {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                window.location.href = '/login';
-            }
-        }
-
-        // API helper with auth
-        async function apiCall(url, options = {}) {
-            const token = localStorage.getItem('token');
-            const headers = {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-                ...options.headers
-            };
-
-            const response = await fetch(url, { ...options, headers });
-            
-            if (response.status === 401) {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                window.location.href = '/login';
-            }
-
-            return response;
-        }
-
-        // Set active menu item
-        function setActiveMenu() {
-            const path = window.location.pathname;
-            const menuItems = document.querySelectorAll('.menu-item');
-            menuItems.forEach(item => {
-                if (item.getAttribute('href') === path) {
-                    item.classList.add('active');
-                } else {
-                    item.classList.remove('active');
-                }
-            });
-        }
-
-        // Initialize on load
-        window.addEventListener('DOMContentLoaded', () => {
-            checkAuth();
-            initializeUser();
-            setActiveMenu();
-        });
-    </script>
-    {% block extra_js %}{% endblock %}
-</body>
+<script>
+function initializeUser() {
 </html>

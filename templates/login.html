@@ -1,270 +1,272 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - StockMaster</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Login - StockMaster</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }
 
-        .auth-container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
-            max-width: 900px;
-            width: 100%;
-            display: flex;
-        }
-
-        .auth-left {
-            flex: 1;
-            padding: 60px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .auth-right {
-            flex: 1;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 60px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
-        }
-
-        .logo {
-            font-size: 32px;
-            font-weight: bold;
-            color: #667eea;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-        }
-
-        .logo-icon {
-            width: 40px;
-            height: 40px;
-            background: #667eea;
-            border-radius: 8px;
-            margin-right: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-        }
-
-        h2 {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 28px;
-        }
-
-        .subtitle {
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 14px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            color: #333;
-            margin-bottom: 8px;
-            font-weight: 500;
-            font-size: 14px;
-        }
-
-        input {
-            width: 100%;
-            padding: 14px;
-            border: 2px solid #e1e8ed;
-            border-radius: 10px;
-            font-size: 14px;
-            transition: all 0.3s;
-            outline: none;
-        }
-
-        input:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .btn {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s;
-            margin-top: 10px;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-        }
-
-        .auth-link {
-            text-align: center;
-            margin-top: 20px;
-            color: #666;
-            font-size: 14px;
-        }
-
-        .auth-link a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .auth-link a:hover {
-            text-decoration: underline;
-        }
-
-        .alert {
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-
-        .alert-error {
-            background: #fee;
-            color: #c33;
-            border: 1px solid #fcc;
-        }
-
-        .alert-success {
-            background: #efe;
-            color: #3c3;
-            border: 1px solid #cfc;
-        }
-
-        .illustration {
-            width: 100%;
-            max-width: 300px;
-            height: 300px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 100px;
-            margin-bottom: 30px;
-        }
-
-        @media (max-width: 768px) {
             .auth-container {
-                flex-direction: column;
+                background: white;
+                border-radius: 20px;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                overflow: hidden;
+                max-width: 900px;
+                width: 100%;
+                display: flex;
             }
-            .auth-right {
-                display: none;
-            }
+
             .auth-left {
-                padding: 40px 30px;
+                flex: 1;
+                padding: 60px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
             }
-        }
-    </style>
-</head>
-<body>
-    <div class="auth-container">
-        <div class="auth-left">
-            <div class="logo">
-                <div class="logo-icon">SM</div>
-                StockMaster
-            </div>
-            <h2>Welcome Back</h2>
-            <p class="subtitle">Sign in to your account to continue</p>
 
-            <div id="alertBox"></div>
+            .auth-right {
+                flex: 1;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 60px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                color: white;
+            }
 
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" required placeholder="Enter your username">
-                </div>
+            .logo {
+                font-size: 32px;
+                font-weight: bold;
+                color: #667eea;
+                margin-bottom: 10px;
+                display: flex;
+                align-items: center;
+            }
 
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required placeholder="Enter your password">
-                </div>
+            .logo-icon {
+                width: 40px;
+                height: 40px;
+                background: #667eea;
+                border-radius: 8px;
+                margin-right: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-weight: bold;
+            }
 
-                <button type="submit" class="btn">Sign In</button>
-            </form>
+            h2 {
+                color: #333;
+                margin-bottom: 10px;
+                font-size: 28px;
+            }
 
-            <div class="auth-link">
-                Don't have an account? <a href="/signup">Create Account</a>
-            </div>
-        </div>
+            .subtitle {
+                color: #666;
+                margin-bottom: 30px;
+                font-size: 14px;
+            }
 
-        <div class="auth-right">
-            <div class="illustration">📦</div>
-            <h2 style="color: white; margin-bottom: 15px;">StockMaster</h2>
-            <p style="text-align: center; opacity: 0.9;">Streamline your inventory management with our powerful platform. Track, manage, and optimize your stock levels in real-time.</p>
-        </div>
-    </div>
+            .form-group {
+                margin-bottom: 20px;
+            }
 
-    <script>
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const alertBox = document.getElementById('alertBox');
-            const formData = {
-                username: document.getElementById('username').value,
-                password: document.getElementById('password').value
-            };
+            label {
+                display: block;
+                color: #333;
+                margin-bottom: 8px;
+                font-weight: 500;
+                font-size: 14px;
+            }
 
-            try {
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(formData)
-                });
+            input {
+                width: 100%;
+                padding: 14px;
+                border: 2px solid #e1e8ed;
+                border-radius: 10px;
+                font-size: 14px;
+                transition: all 0.3s;
+                outline: none;
+            }
 
-                const data = await response.json();
+            input:focus {
+                border-color: #667eea;
+                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            }
 
-                if (response.ok) {
-                    localStorage.setItem('token', data.access_token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    alertBox.innerHTML = '<div class="alert alert-success">Login successful! Redirecting...</div>';
-                    setTimeout(() => {
-                        window.location.href = '/dashboard';
-                    }, 1500);
-                } else {
-                    alertBox.innerHTML = `<div class="alert alert-error">${data.error}</div>`;
+            .btn {
+                width: 100%;
+                padding: 14px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                border-radius: 10px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: transform 0.2s;
+                margin-top: 10px;
+            }
+
+            .btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            }
+
+            .auth-link {
+                text-align: center;
+                margin-top: 20px;
+                color: #666;
+                font-size: 14px;
+            }
+
+            .auth-link a {
+                color: #667eea;
+                text-decoration: none;
+                font-weight: 600;
+            }
+
+            .auth-link a:hover {
+                text-decoration: underline;
+            }
+
+            .alert {
+                padding: 12px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                font-size: 14px;
+            }
+
+            .alert-error {
+                background: #fee;
+                color: #c33;
+                border: 1px solid #fcc;
+            }
+
+            .alert-success {
+                background: #efe;
+                color: #3c3;
+                border: 1px solid #cfc;
+            }
+
+            .illustration {
+                width: 100%;
+                max-width: 300px;
+                height: 300px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 100px;
+                margin-bottom: 30px;
+            }
+
+            @media (max-width: 768px) {
+                .auth-container {
+                    flex-direction: column;
                 }
-            } catch (error) {
-                alertBox.innerHTML = '<div class="alert alert-error">Network error. Please try again.</div>';
+                .auth-right {
+                    display: none;
+                }
+                .auth-left {
+                    padding: 40px 30px;
+                }
             }
-        });
-    </script>
-</body>
-</html>
+        </style>
+    </head>
+    <body>
+        <div class="auth-container">
+            <div class="auth-left">
+                <div class="logo">
+                    <div class="logo-icon">SM</div>
+                    StockMaster
+                </div>
+                <h2>Welcome Back</h2>
+                <p class="subtitle">Sign in to your account to continue</p>
+
+                <div id="alertBox"></div>
+
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" required placeholder="Enter your username">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" required placeholder="Enter your password">
+                    </div>
+
+                    <button type="submit" class="btn">Sign In</button>
+                </form>
+
+                <div class="auth-link">
+                    Don't have an account? <a href="/signup">Create Account</a>
+                </div>
+            </div>
+
+            <div class="auth-right">
+                <div class="illustration">📦</div>
+                <h2 style="color: white; margin-bottom: 15px;">StockMaster</h2>
+                <p style="text-align: center; opacity: 0.9;">Streamline your inventory management with our powerful platform. Track, manage, and optimize your stock levels in real-time.</p>
+            </div>
+        </div>
+
+        <script>
+            document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const alertBox = document.getElementById('alertBox');
+                const formData = {
+                    username: document.getElementById('username').value,
+                    password: document.getElementById('password').value
+                };
+
+                try {
+                    const response = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(formData)
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+        localStorage.setItem('token', data.access_token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        sessionStorage.setItem('justLoggedIn', 'true');  // ← ADD THIS LINE
+        alertBox.innerHTML = '<div class="alert alert-success">Login successful! Redirecting...</div>';
+        setTimeout(() => {
+            window.location.href = '/dashboard';
+        }, 1500);
+    }
+    else {
+                        alertBox.innerHTML = `<div class="alert alert-error">${data.error}</div>`;
+                    }
+                } catch (error) {
+                    alertBox.innerHTML = '<div class="alert alert-error">Network error. Please try again.</div>';
+                }
+            });
+        </script>
+    </body>
+    </html>

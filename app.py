@@ -546,7 +546,806 @@ def get_dashboard():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# ==================== PRODUCT ROUTES ====================
 
+@app.route('/api/products', methods=['GET'])
+@jwt_required()
+def get_products():
+    try:
+        # Query parameters for filtering
+        category_id = request.args.get('category_id', type=int)
+        warehouse_id = request.args.get('warehouse_id', type=int)
+        search = request.args.get('search', '')
+        
+        query = Product.query.filter_by(is_active=True)
+        
+        if category_id:
+            query = query.filter_by(category_id=category_id)
+        
+        if search:
+            query = query.filter(
+                or_(
+                    Product.name.ilike(f'%{search}%'),
+                    Product.sku.ilike(f'%{search}%')
+                )
+            )
+        
+        products = query.all()
+        
+        # If warehouse filter, get stock info
+        if warehouse_id:
+            result = []
+            for product in products:
+                stock = Stock.query.filter_by(
+                    product_id=product.id,
+                    warehouse_id=warehouse_id
+                ).first()
+                
+                product_data = product.to_dict()
+                product_data['stock'] = stock.to_dict() if stock else None
+                result.append(product_data)
+            
+            return jsonify(result), 200
+        
+        return jsonify([p.to_dict() for p in products]), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/products', methods=['POST'])
+@jwt_required()
+def create_product():
+    try:
+        data = request.get_json()
+        
+        if not all(k in data for k in ['name', 'sku']):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        # Check if SKU exists
+        if Product.query.filter_by(sku=data['sku']).first():
+            return jsonify({'error': 'SKU already exists'}), 400
+        
+        product = Product(
+            name=data['name'],
+            sku=data['sku'],
+            category_id=data.get('category_id'),
+            unit_of_measure=data.get('unit_of_measure', 'Units'),
+            reorder_level=data.get('reorder_level', 0),
+            description=data.get('description', '')
+        )
+        
+        db.session.add(product)
+        db.session.commit()
+        
+        # Initialize stock if provided
+        if 'initial_stock' in data and data['initial_stock'] > 0:
+            warehouse_id = data.get('warehouse_id', 1)  # Default warehouse
+            stock = Stock(
+                product_id=product.id,
+                warehouse_id=warehouse_id,
+                quantity=data['initial_stock']
+            )
+            db.session.add(stock)
+            db.session.commit()
+        
+        return jsonify({
+            'message': 'Product created successfully',
+            'product': product.to_dict()
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/products/', methods=['GET'])
+@jwt_required()
+def get_product(product_id):
+    try:
+        product = Product.query.get(product_id)
+        
+        if not product:
+            return jsonify({'error': 'Product not found'}), 404
+        
+        # Get stock levels across all warehouses
+        stocks = Stock.query.filter_by(product_id=product_id).all()
+        
+        product_data = product.to_dict()
+        product_data['stock_levels'] = [s.to_dict() for s in stocks]
+        
+        return jsonify(product_data), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/products/', methods=['PUT'])
+@jwt_required()
+def update_product(product_id):
+    try:
+        product = Product.query.get(product_id)
+        
+        if not product:
+            return jsonify({'error': 'Product not found'}), 404
+        
+        data = request.get_json()
+        
+        if 'name' in data:
+            product.name = data['name']
+        if 'category_id' in data:
+            product.category_id = data['category_id']
+        if 'unit_of_measure' in data:
+            product.unit_of_measure = data['unit_of_measure']
+        if 'reorder_level' in data:
+            product.reorder_level = data['reorder_level']
+        if 'description' in data:
+            product.description = data['description']
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Product updated successfully',
+            'product': product.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/products/', methods=['DELETE'])
+@jwt_required()
+def delete_product(product_id):
+    try:
+        product = Product.query.get(product_id)
+        
+        if not product:
+            return jsonify({'error': 'Product not found'}), 404
+        
+        # Soft delete
+        product.is_active = False
+        db.session.commit()
+        
+        return jsonify({'message': 'Product deleted successfully'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+# ==================== CATEGORY ROUTES ====================
+
+@app.route('/api/categories', methods=['GET'])
+@jwt_required()
+def get_categories():
+    try:
+        categories = Category.query.all()
+        return jsonify([c.to_dict() for c in categories]), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/categories', methods=['POST'])
+@jwt_required()
+def create_category():
+    try:
+        data = request.get_json()
+        
+        if 'name' not in data:
+            return jsonify({'error': 'Name is required'}), 400
+        
+        category = Category(
+            name=data['name'],
+            description=data.get('description', ''),
+            parent_id=data.get('parent_id')
+        )
+        
+        db.session.add(category)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Category created successfully',
+            'category': category.to_dict()
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+# ==================== WAREHOUSE ROUTES ====================
+
+@app.route('/api/warehouses', methods=['GET'])
+@jwt_required()
+def get_warehouses():
+    try:
+        warehouses = Warehouse.query.filter_by(is_active=True).all()
+        return jsonify([w.to_dict() for w in warehouses]), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/warehouses', methods=['POST'])
+@jwt_required()
+def create_warehouse():
+    try:
+        data = request.get_json()
+        
+        if not all(k in data for k in ['name', 'code']):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        if Warehouse.query.filter_by(code=data['code']).first():
+            return jsonify({'error': 'Warehouse code already exists'}), 400
+        
+        warehouse = Warehouse(
+            name=data['name'],
+            code=data['code'],
+            location=data.get('location', '')
+        )
+        
+        db.session.add(warehouse)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Warehouse created successfully',
+            'warehouse': warehouse.to_dict()
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+# ==================== RECEIPT ROUTES ====================
+
+@app.route('/api/receipts', methods=['GET'])
+@jwt_required()
+def get_receipts():
+    try:
+        status = request.args.get('status')
+        warehouse_id = request.args.get('warehouse_id', type=int)
+        
+        query = Receipt.query
+        
+        if status:
+            query = query.filter_by(status=status)
+        if warehouse_id:
+            query = query.filter_by(warehouse_id=warehouse_id)
+        
+        receipts = query.order_by(Receipt.created_at.desc()).all()
+        
+        result = []
+        for receipt in receipts:
+            receipt_data = receipt.to_dict()
+            receipt_data['lines'] = [line.to_dict() for line in receipt.lines]
+            result.append(receipt_data)
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/receipts', methods=['POST'])
+@jwt_required()
+def create_receipt():
+    try:
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        if not all(k in data for k in ['warehouse_id', 'lines']):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        receipt = Receipt(
+            reference=generate_reference('RCP'),
+            supplier=data.get('supplier', ''),
+            warehouse_id=data['warehouse_id'],
+            status='draft',
+            scheduled_date=datetime.fromisoformat(data['scheduled_date']) if 'scheduled_date' in data else None,
+            notes=data.get('notes', ''),
+            created_by=user_id
+        )
+        
+        db.session.add(receipt)
+        db.session.flush()
+        
+        # Add receipt lines
+        for line_data in data['lines']:
+            line = ReceiptLine(
+                receipt_id=receipt.id,
+                product_id=line_data['product_id'],
+                quantity_expected=line_data['quantity']
+            )
+            db.session.add(line)
+        
+        db.session.commit()
+        
+        receipt_data = receipt.to_dict()
+        receipt_data['lines'] = [line.to_dict() for line in receipt.lines]
+        
+        return jsonify({
+            'message': 'Receipt created successfully',
+            'receipt': receipt_data
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/receipts//validate', methods=['POST'])
+@jwt_required()
+def validate_receipt(receipt_id):
+    try:
+        user_id = get_jwt_identity()
+        receipt = Receipt.query.get(receipt_id)
+        
+        if not receipt:
+            return jsonify({'error': 'Receipt not found'}), 404
+        
+        if receipt.status == 'done':
+            return jsonify({'error': 'Receipt already validated'}), 400
+        
+        # Update stock for each line
+        for line in receipt.lines:
+            quantity = line.quantity_received if line.quantity_received > 0 else line.quantity_expected
+            update_stock(
+                line.product_id,
+                receipt.warehouse_id,
+                quantity,
+                'receipt',
+                receipt.reference,
+                user_id
+            )
+        
+        receipt.status = 'done'
+        receipt.received_date = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Receipt validated successfully',
+            'receipt': receipt.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+# ==================== DELIVERY ROUTES ====================
+
+@app.route('/api/deliveries', methods=['GET'])
+@jwt_required()
+def get_deliveries():
+    try:
+        status = request.args.get('status')
+        warehouse_id = request.args.get('warehouse_id', type=int)
+        
+        query = Delivery.query
+        
+        if status:
+            query = query.filter_by(status=status)
+        if warehouse_id:
+            query = query.filter_by(warehouse_id=warehouse_id)
+        
+        deliveries = query.order_by(Delivery.created_at.desc()).all()
+        
+        result = []
+        for delivery in deliveries:
+            delivery_data = delivery.to_dict()
+            delivery_data['lines'] = [line.to_dict() for line in delivery.lines]
+            result.append(delivery_data)
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/deliveries', methods=['POST'])
+@jwt_required()
+def create_delivery():
+    try:
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        if not all(k in data for k in ['warehouse_id', 'lines']):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        delivery = Delivery(
+            reference=generate_reference('DLV'),
+            customer=data.get('customer', ''),
+            warehouse_id=data['warehouse_id'],
+            status='draft',
+            scheduled_date=datetime.fromisoformat(data['scheduled_date']) if 'scheduled_date' in data else None,
+            shipping_address=data.get('shipping_address', ''),
+            notes=data.get('notes', ''),
+            created_by=user_id
+        )
+        
+        db.session.add(delivery)
+        db.session.flush()
+        
+        # Add delivery lines
+        for line_data in data['lines']:
+            line = DeliveryLine(
+                delivery_id=delivery.id,
+                product_id=line_data['product_id'],
+                quantity_ordered=line_data['quantity']
+            )
+            db.session.add(line)
+        
+        db.session.commit()
+        
+        delivery_data = delivery.to_dict()
+        delivery_data['lines'] = [line.to_dict() for line in delivery.lines]
+        
+        return jsonify({
+            'message': 'Delivery created successfully',
+            'delivery': delivery_data
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/deliveries//validate', methods=['POST'])
+@jwt_required()
+def validate_delivery(delivery_id):
+    try:
+        user_id = get_jwt_identity()
+        delivery = Delivery.query.get(delivery_id)
+        
+        if not delivery:
+            return jsonify({'error': 'Delivery not found'}), 404
+        
+        if delivery.status == 'done':
+            return jsonify({'error': 'Delivery already validated'}), 400
+        
+        # Update stock for each line
+        for line in delivery.lines:
+            quantity = line.quantity_delivered if line.quantity_delivered > 0 else line.quantity_ordered
+            
+            # Check if sufficient stock
+            stock = Stock.query.filter_by(
+                product_id=line.product_id,
+                warehouse_id=delivery.warehouse_id
+            ).first()
+            
+            if not stock or stock.quantity < quantity:
+                return jsonify({'error': f'Insufficient stock for product {line.product.name}'}), 400
+            
+            update_stock(
+                line.product_id,
+                delivery.warehouse_id,
+                -quantity,
+                'delivery',
+                delivery.reference,
+                user_id
+            )
+        
+        delivery.status = 'done'
+        delivery.delivery_date = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Delivery validated successfully',
+            'delivery': delivery.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+# ==================== INTERNAL TRANSFER ROUTES ====================
+
+@app.route('/api/transfers', methods=['GET'])
+@jwt_required()
+def get_transfers():
+    try:
+        status = request.args.get('status')
+        
+        query = InternalTransfer.query
+        
+        if status:
+            query = query.filter_by(status=status)
+        
+        transfers = query.order_by(InternalTransfer.created_at.desc()).all()
+        
+        result = []
+        for transfer in transfers:
+            transfer_data = transfer.to_dict()
+            transfer_data['lines'] = [line.to_dict() for line in transfer.lines]
+            result.append(transfer_data)
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/transfers', methods=['POST'])
+@jwt_required()
+def create_transfer():
+    try:
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        if not all(k in data for k in ['from_warehouse_id', 'to_warehouse_id', 'lines']):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        if data['from_warehouse_id'] == data['to_warehouse_id']:
+            return jsonify({'error': 'Source and destination warehouses must be different'}), 400
+        
+        transfer = InternalTransfer(
+            reference=generate_reference('TRF'),
+            from_warehouse_id=data['from_warehouse_id'],
+            to_warehouse_id=data['to_warehouse_id'],
+            status='draft',
+            scheduled_date=datetime.fromisoformat(data['scheduled_date']) if 'scheduled_date' in data else None,
+            notes=data.get('notes', ''),
+            created_by=user_id
+        )
+        
+        db.session.add(transfer)
+        db.session.flush()
+        
+        # Add transfer lines
+        for line_data in data['lines']:
+            line = TransferLine(
+                transfer_id=transfer.id,
+                product_id=line_data['product_id'],
+                quantity=line_data['quantity']
+            )
+            db.session.add(line)
+        
+        db.session.commit()
+        
+        transfer_data = transfer.to_dict()
+        transfer_data['lines'] = [line.to_dict() for line in transfer.lines]
+        
+        return jsonify({
+            'message': 'Transfer created successfully',
+            'transfer': transfer_data
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/transfers//validate', methods=['POST'])
+@jwt_required()
+def validate_transfer(transfer_id):
+    try:
+        user_id = get_jwt_identity()
+        transfer = InternalTransfer.query.get(transfer_id)
+        
+        if not transfer:
+            return jsonify({'error': 'Transfer not found'}), 404
+        
+        if transfer.status == 'done':
+            return jsonify({'error': 'Transfer already validated'}), 400
+        
+        # Update stock for each line
+        for line in transfer.lines:
+            # Check if sufficient stock in source
+            stock = Stock.query.filter_by(
+                product_id=line.product_id,
+                warehouse_id=transfer.from_warehouse_id
+            ).first()
+            
+            if not stock or stock.quantity < line.quantity:
+                return jsonify({'error': f'Insufficient stock for product {line.product.name}'}), 400
+            
+            # Decrease from source
+            update_stock(
+                line.product_id,
+                transfer.from_warehouse_id,
+                -line.quantity,
+                'transfer_out',
+                transfer.reference,
+                user_id
+            )
+            
+            # Increase in destination
+            update_stock(
+                line.product_id,
+                transfer.to_warehouse_id,
+                line.quantity,
+                'transfer_in',
+                transfer.reference,
+                user_id
+            )
+        
+        transfer.status = 'done'
+        transfer.transfer_date = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Transfer validated successfully',
+            'transfer': transfer.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+# ==================== STOCK ADJUSTMENT ROUTES ====================
+
+@app.route('/api/adjustments', methods=['GET'])
+@jwt_required()
+def get_adjustments():
+    try:
+        warehouse_id = request.args.get('warehouse_id', type=int)
+        product_id = request.args.get('product_id', type=int)
+        
+        query = StockAdjustment.query
+        
+        if warehouse_id:
+            query = query.filter_by(warehouse_id=warehouse_id)
+        if product_id:
+            query = query.filter_by(product_id=product_id)
+        
+        adjustments = query.order_by(StockAdjustment.created_at.desc()).all()
+        
+        return jsonify([adj.to_dict() for adj in adjustments]), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/adjustments', methods=['POST'])
+@jwt_required()
+def create_adjustment():
+    try:
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        if not all(k in data for k in ['warehouse_id', 'product_id', 'new_quantity']):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        # Get current stock
+        stock = Stock.query.filter_by(
+            product_id=data['product_id'],
+            warehouse_id=data['warehouse_id']
+        ).first()
+        
+        old_quantity = stock.quantity if stock else 0
+        new_quantity = data['new_quantity']
+        
+        # Create adjustment record
+        adjustment = StockAdjustment(
+            reference=generate_reference('ADJ'),
+            warehouse_id=data['warehouse_id'],
+            product_id=data['product_id'],
+            old_quantity=old_quantity,
+            new_quantity=new_quantity,
+            adjustment_type=data.get('adjustment_type', 'correction'),
+            reason=data.get('reason', ''),
+            created_by=user_id
+        )
+        
+        db.session.add(adjustment)
+        
+        # Update stock
+        quantity_change = new_quantity - old_quantity
+        update_stock(
+            data['product_id'],
+            data['warehouse_id'],
+            quantity_change,
+            'adjustment',
+            adjustment.reference,
+            user_id
+        )
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Stock adjusted successfully',
+            'adjustment': adjustment.to_dict()
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+# ==================== STOCK MOVE HISTORY ROUTES ====================
+
+@app.route('/api/moves', methods=['GET'])
+@jwt_required()
+def get_moves():
+    try:
+        product_id = request.args.get('product_id', type=int)
+        warehouse_id = request.args.get('warehouse_id', type=int)
+        move_type = request.args.get('move_type')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        limit = request.args.get('limit', 50, type=int)
+        
+        query = StockMove.query
+        
+        if product_id:
+            query = query.filter_by(product_id=product_id)
+        if warehouse_id:
+            query = query.filter_by(warehouse_id=warehouse_id)
+        if move_type:
+            query = query.filter_by(move_type=move_type)
+        if start_date:
+            query = query.filter(StockMove.move_date >= datetime.fromisoformat(start_date))
+        if end_date:
+            query = query.filter(StockMove.move_date <= datetime.fromisoformat(end_date))
+        
+        moves = query.order_by(StockMove.move_date.desc()).limit(limit).all()
+        
+        return jsonify([move.to_dict() for move in moves]), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ==================== STOCK ROUTES ====================
+
+@app.route('/api/stock', methods=['GET'])
+@jwt_required()
+def get_stock():
+    try:
+        warehouse_id = request.args.get('warehouse_id', type=int)
+        product_id = request.args.get('product_id', type=int)
+        
+        query = Stock.query
+        
+        if warehouse_id:
+            query = query.filter_by(warehouse_id=warehouse_id)
+        if product_id:
+            query = query.filter_by(product_id=product_id)
+        
+        stocks = query.all()
+        
+        return jsonify([stock.to_dict() for stock in stocks]), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ==================== INITIALIZATION ROUTE ====================
+
+@app.route('/api/init', methods=['POST'])
+def initialize_database():
+    """Initialize database with tables and sample data"""
+    try:
+        # Create all tables
+        db.create_all()
+        
+        # Check if already initialized
+        if User.query.first():
+            return jsonify({'message': 'Database already initialized'}), 200
+        
+        # Create default admin user
+        admin = User(
+            username='admin',
+            email='admin@stockmaster.com',
+            full_name='System Administrator',
+            role='admin'
+        )
+        admin.set_password('admin123')
+        db.session.add(admin)
+        
+        # Create default warehouse
+        warehouse = Warehouse(
+            name='Main Warehouse',
+            code='WH001',
+            location='Main Building'
+        )
+        db.session.add(warehouse)
+        
+        # Create sample categories
+        categories = [
+            Category(name='Raw Materials', description='Raw materials for production'),
+            Category(name='Finished Goods', description='Ready to sell products'),
+            Category(name='Consumables', description='Office and warehouse consumables')
+        ]
+        db.session.add_all(categories)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Database initialized successfully',
+            'admin_credentials': {
+                'username': 'admin',
+                'password': 'admin123'
+            }
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 # ==================== HEALTH CHECK ====================
 
@@ -576,6 +1375,12 @@ def signup_page():
 def dashboard_page():
     """Render dashboard page"""
     return render_template('dashboard.html')
+
+@app.route('/products', methods=['GET'])
+def products_page():
+    """Render products page"""
+    return render_template('products.html')
+
 
 @app.route('/api/docs', methods=['GET'])
 def api_docs():

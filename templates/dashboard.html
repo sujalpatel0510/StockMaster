@@ -250,6 +250,8 @@
 
 {% block extra_js %}
 <script>
+    sessionStorage.removeItem('justLoggedIn');
+
     async function loadDashboard() {
         try {
             const response = await apiCall('/api/dashboard');
