@@ -20,11 +20,12 @@ CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://postgres:8511@localhost:5432/stockmaster')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=168)
 
 # Initialize extensions
 db = SQLAlchemy(app)
 jwt = JWTManager(app)
+
 
 # ==================== DATABASE MODELS ====================
 
@@ -759,19 +760,26 @@ def get_warehouses():
         return jsonify([w.to_dict() for w in warehouses]), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
 
+# In app.py
 @app.route('/api/warehouses', methods=['POST'])
 @jwt_required()
 def create_warehouse():
     try:
         data = request.get_json()
         
-        if not all(k in data for k in ['name', 'code']):
-            return jsonify({'error': 'Missing required fields'}), 400
+        # 1. Validation: Check for missing fields
+        required_fields = ['name', 'code']
+        if not data or not all(data.get(k) for k in required_fields):
+            return jsonify({'error': 'Missing required fields: Name and Code are mandatory.'}), 400
         
+        # 2. Check for duplicate code (code must be unique)
         if Warehouse.query.filter_by(code=data['code']).first():
-            return jsonify({'error': 'Warehouse code already exists'}), 400
+            # Use 409 Conflict (better than 400 for resource collision)
+            return jsonify({'error': f"Warehouse code '{data['code']}' already exists. Please use a different code."}), 409
         
+        # 3. Create and Save
         warehouse = Warehouse(
             name=data['name'],
             code=data['code'],
@@ -788,7 +796,11 @@ def create_warehouse():
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        # CRITICAL: This will print the exact database error to your terminal
+        print("-" * 50)
+        print(f"DATABASE ERROR during warehouse creation: {e}") 
+        print("-" * 50)
+        return jsonify({'error': 'Internal server error while saving warehouse. Check server logs for details.'}), 500
 
 # ==================== RECEIPT ROUTES ====================
 
