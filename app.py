@@ -35,7 +35,7 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     full_name = db.Column(db.String(100))
-    role = db.Column(db.String(50), default='admin')  # admin, manager, staff
+    role = db.Column(db.String(50), default='')  # admin, manager, staff
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def set_password(self, password):
@@ -388,68 +388,70 @@ def check_low_stock():
 
 @app.route('/api/auth/signup', methods=['POST'])
 def signup():
-    try:
-        data = request.get_json()
+    data = request.get_json()
+    
+    # Check for duplicates
+    if User.query.filter_by(username=data.get('username')).first():
+        return jsonify({'error': 'Username already exists'}), 400
         
-        # Validate required fields
-        if not all(k in data for k in ['username', 'email', 'password']):
-            return jsonify({'error': 'Missing required fields'}), 400
-        
-        # Check if user exists
-        if User.query.filter_by(username=data['username']).first():
-            return jsonify({'error': 'Username already exists'}), 400
-        
-        if User.query.filter_by(email=data['email']).first():
-            return jsonify({'error': 'Email already exists'}), 400
-        
-        # Create new user
-        user = User(
-            username=data['username'],
-            email=data['email'],
-            full_name=data.get('full_name', ''),
-            role=data.get('role', 'admin')
-        )
-        user.set_password(data['password'])
-        
-        db.session.add(user)
-        db.session.commit()
-        
-        # Generate token
-        access_token = create_access_token(identity=user.id)
-        
-        return jsonify({
-            'message': 'User created successfully',
-            'user': user.to_dict(),
-            'access_token': access_token
-        }), 201
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+    if User.query.filter_by(email=data.get('email')).first():
+        return jsonify({'error': 'Email already exists'}), 400
+    
+    # Create the user
+    new_user = User(
+        username=data.get('username'),
+        email=data.get('email'),
+        full_name=data.get('full_name'),
+        role='admin'  # <--- CHANGED FROM 'staff' TO 'admin'
+    )
+    new_user.set_password(data.get('password'))
+    
+    db.session.add(new_user)
+    db.session.commit()
+    
+    # Auto-login the user
+    access_token = create_access_token(identity=new_user.id)
+    
+    return jsonify({
+        'message': 'User created successfully',
+        'access_token': access_token,
+        'user': new_user.to_dict()
+    }), 201
+
+
+# ---------------------------------------------------------
+# PASTE THIS CODE INTO app.py (AFTER signup, BEFORE root)
+# ---------------------------------------------------------
 
 @app.route('/api/auth/login', methods=['POST'])
 def login():
     try:
+        # 1. Get data from the frontend
         data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+
+        # 2. Find the user in the database
+        user = User.query.filter_by(username=username).first()
+
+        # 3. Check if user exists AND password is correct
+        if user and user.check_password(password):
+            # 4. Create a security token (JWT)
+            access_token = create_access_token(identity=user.id)
+            
+            # 5. Send success response
+            return jsonify({
+                'message': 'Login successful',
+                'access_token': access_token,
+                'user': user.to_dict()
+            }), 200
         
-        if not all(k in data for k in ['username', 'password']):
-            return jsonify({'error': 'Missing credentials'}), 400
-        
-        user = User.query.filter_by(username=data['username']).first()
-        
-        if not user or not user.check_password(data['password']):
-            return jsonify({'error': 'Invalid credentials'}), 401
-        
-        access_token = create_access_token(identity=user.id)
-        
-        return jsonify({
-            'message': 'Login successful',
-            'user': user.to_dict(),
-            'access_token': access_token
-        }), 200
-        
+        # 6. If login fails
+        return jsonify({'error': 'Invalid username or password'}), 401
+
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Login Error: {e}")
+        return jsonify({'error': 'Server error during login'}), 500
 
 @app.route('/api/auth/profile', methods=['GET'])
 @jwt_required()
@@ -1385,6 +1387,36 @@ def products_page():
 def receipts_page():
     """Render receipts page"""
     return render_template('receipts.html')
+
+@app.route('/deliveries', methods=['GET'])
+def deliveries_page():
+    """Render deliveries page (Outgoing Stock)"""
+    return render_template('deliveries.html')
+
+@app.route('/transfers', methods=['GET'])
+def transfers_page():
+    """Render stock transfer page"""
+    return render_template('transfers.html')
+
+@app.route('/adjustments', methods=['GET'])
+def adjustments_page():
+    """Render stock adjustments and corrections page"""
+    return render_template('adjustments.html')
+
+@app.route('/history', methods=['GET'])
+def history_page():
+    """Render stock movement history page"""
+    return render_template('history.html') 
+
+@app.route('/warehouses', methods=['GET'])
+def warehouses_page():
+    """Render warehouse management page"""
+    return render_template('warehouses.html')
+
+@app.route('/profile', methods=['GET'])
+def profile_page():
+    """Render user profile management page"""
+    return render_template('profile.html')
 
 @app.route('/api/docs', methods=['GET'])
 def api_docs():

@@ -211,6 +211,16 @@
     </div>
 </div>
 
+<!-- Category Stats -->
+<div class="card" style="margin-bottom: 30px;">
+    <div class="card-header">
+        <h3 class="card-title">Product Categories</h3>
+    </div>
+    <div id="categoriesGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; padding: 10px 0;">
+        <p style="text-align: center; color: #7f8c8d;">Loading categories...</p>
+    </div>
+</div>
+
 <div class="content-grid">
     <div class="card">
         <div class="card-header">
@@ -250,47 +260,61 @@
 
 {% block extra_js %}
 <script>
-    sessionStorage.removeItem('justLoggedIn');
-
     async function loadDashboard() {
         try {
+            // Get token first
+            const token = localStorage.getItem('access_token');
+            
+            // If no token, don't try to load data (user will see zeros)
+            if (!token) {
+                console.log('No token found - user needs to login');
+                return;
+            }
+
+            // Make API call
             const response = await apiCall('/api/dashboard');
+            
+            // If apiCall redirected (no response), stop here
+            if (!response) {
+                return;
+            }
+
             const data = await response.json();
 
-            // Update KPIs
-            document.getElementById('totalProducts').textContent = data.kpis.total_products;
-            document.getElementById('lowStock').textContent = data.kpis.low_stock_items;
-            document.getElementById('outOfStock').textContent = data.kpis.out_of_stock_items;
-            document.getElementById('pendingReceipts').textContent = data.kpis.pending_receipts;
-            document.getElementById('pendingDeliveries').textContent = data.kpis.pending_deliveries;
-            document.getElementById('scheduledTransfers').textContent = data.kpis.scheduled_transfers;
+            // Update KPIs - with safe fallback values
+            document.getElementById('totalProducts').textContent = data.kpis?.total_products || 0;
+            document.getElementById('lowStock').textContent = data.kpis?.low_stock_items || 0;
+            document.getElementById('outOfStock').textContent = data.kpis?.out_of_stock_items || 0;
+            document.getElementById('pendingReceipts').textContent = data.kpis?.pending_receipts || 0;
+            document.getElementById('pendingDeliveries').textContent = data.kpis?.pending_deliveries || 0;
+            document.getElementById('scheduledTransfers').textContent = data.kpis?.scheduled_transfers || 0;
 
-            // Load recent moves
+            // Load recent moves - with null checks
             const movesTable = document.getElementById('recentMovesTable');
-            if (data.recent_moves.length === 0) {
+            if (!data.recent_moves || data.recent_moves.length === 0) {
                 movesTable.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 30px; color: #7f8c8d;">No recent movements</td></tr>';
             } else {
                 movesTable.innerHTML = data.recent_moves.map(move => `
                     <tr>
-                        <td>${move.product.name}</td>
-                        <td><span class="badge badge-info">${move.move_type}</span></td>
-                        <td>${move.quantity > 0 ? '+' : ''}${move.quantity}</td>
-                        <td>${move.warehouse.name}</td>
-                        <td>${new Date(move.move_date).toLocaleDateString()}</td>
+                        <td>${move.product?.name || 'Unknown'}</td>
+                        <td><span class="badge badge-info">${move.move_type || 'N/A'}</span></td>
+                        <td>${move.quantity > 0 ? '+' : ''}${move.quantity || 0}</td>
+                        <td>${move.warehouse?.name || 'Unknown'}</td>
+                        <td>${move.move_date ? new Date(move.move_date).toLocaleDateString() : 'N/A'}</td>
                     </tr>
                 `).join('');
             }
 
-            // Load low stock alerts
+            // Load low stock alerts - with null checks
             const alertsDiv = document.getElementById('lowStockAlerts');
-            if (data.low_stock_alerts.length === 0) {
+            if (!data.low_stock_alerts || data.low_stock_alerts.length === 0) {
                 alertsDiv.innerHTML = '<p style="text-align: center; padding: 30px; color: #7f8c8d;">All stock levels are good! 🎉</p>';
             } else {
                 alertsDiv.innerHTML = data.low_stock_alerts.map(alert => `
                     <div class="alert-item">
                         <div class="alert-text">
-                            <div class="alert-title">${alert.product.name}</div>
-                            <div class="alert-desc">${alert.warehouse.name} - Available: ${alert.available_quantity} / Reorder: ${alert.reorder_level}</div>
+                            <div class="alert-title">${alert.product?.name || 'Unknown Product'}</div>
+                            <div class="alert-desc">${alert.warehouse?.name || 'Unknown'} - Available: ${alert.available_quantity || 0} / Reorder: ${alert.product?.reorder_level || 0}</div>
                         </div>
                         <span class="badge badge-warning">Low</span>
                     </div>
@@ -298,9 +322,16 @@
             }
         } catch (error) {
             console.error('Error loading dashboard:', error);
+            // Show error message but don't redirect
+            document.getElementById('recentMovesTable').innerHTML = 
+                '<tr><td colspan="5" style="text-align: center; padding: 30px; color: #e74c3c;">Unable to load dashboard data. Please check your connection.</td></tr>';
         }
     }
 
-    window.addEventListener('DOMContentLoaded', loadDashboard);
+    // Load dashboard when page is ready
+    window.addEventListener('DOMContentLoaded', () => {
+        loadCategories();
+        loadDashboard();
+    });
 </script>
 {% endblock %}

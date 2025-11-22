@@ -4,13 +4,19 @@
 {% block page_title %}Products Management{% endblock %}
 
 {% block header_actions %}
-<button class="btn btn-primary" onclick="openAddProductModal()">
-    ➕ Add Product
-</button>
+<div style="display: flex; gap: 10px;">
+    <button class="btn" style="background: #e2e8f0; color: #2d3748;" onclick="openCategoryModal()">
+        📁 Manage Categories
+    </button>
+    <button class="btn btn-primary" onclick="openAddProductModal()">
+        ➕ Add Product
+    </button>
+</div>
 {% endblock %}
 
 {% block extra_css %}
 <style>
+    /* Filter Section Styles */
     .filters {
         background: white;
         padding: 20px;
@@ -51,6 +57,7 @@
         border-color: #667eea;
     }
 
+    /* Product Grid Styles */
     .products-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -133,6 +140,7 @@
         color: #2c3e50;
     }
 
+    /* Modal Styles */
     .modal {
         display: none;
         position: fixed;
@@ -266,7 +274,6 @@
     <p style="text-align: center; padding: 50px; color: #7f8c8d;">Loading products...</p>
 </div>
 
-<!-- Add/Edit Product Modal -->
 <div class="modal" id="productModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -308,30 +315,168 @@
         </form>
     </div>
 </div>
+
+<div class="modal" id="categoryModal">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3 class="modal-title">Manage Categories</h3>
+            <button class="close-btn" onclick="closeCategoryModal()">✕</button>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+            <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 16px;">Add New Category</h4>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="newCategoryName" placeholder="Category Name (e.g. Electronics)" class="form-control" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                <button onclick="saveCategory()" style="background: #48bb78; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">Add</button>
+            </div>
+        </div>
+
+        <div>
+            <h4 style="margin-bottom: 10px; font-size: 16px;">Existing Categories</h4>
+            <div id="categoriesList" style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px;">
+                </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+    // --- API Helper Function (Crucial for connecting to app.py) ---
+    async function apiCall(endpoint, options = {}) {
+        const token = localStorage.getItem('access_token'); // Check if token is stored
+        
+        const headers = {
+            'Content-Type': 'application/json',
+            ...options.headers
+        };
+
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(endpoint, {
+            ...options,
+            headers: headers
+        });
+
+        // If not authorized (401), redirect to login
+        if (response.status === 401) {
+
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user');
+
+            alert("Session expired. Please login again.");
+            window.location.href = '/login'; 
+            throw new Error('Unauthorized');
+        }
+
+        return response;
+    }
+
+    // --- Global Variables ---
     let allProducts = [];
     let categories = [];
     let warehouses = [];
 
+    // --- Initialization ---
+    window.addEventListener('DOMContentLoaded', () => {
+        loadCategories();
+        loadWarehouses();
+        loadProducts();
+    });
+
+    // --- Category Functions ---
+
+    function openCategoryModal() {
+        document.getElementById('categoryModal').classList.add('active');
+        loadCategoriesList(); // Load the list for the manager modal
+    }
+
+    function closeCategoryModal() {
+        document.getElementById('categoryModal').classList.remove('active');
+    }
+
+    // Load categories into the dropdowns (Search & Add Product)
     async function loadCategories() {
         try {
             const response = await apiCall('/api/categories');
             categories = await response.json();
             
-            const categoryFilter = document.getElementById('categoryFilter');
-            const productCategory = document.getElementById('productCategory');
+            // Populate Filter Dropdown
+            const filterSelect = document.getElementById('categoryFilter');
+            filterSelect.innerHTML = '<option value="">All Categories</option>';
+            
+            // Populate Add Product Dropdown
+            const productSelect = document.getElementById('productCategory');
+            productSelect.innerHTML = '<option value="">Select Category</option>';
             
             categories.forEach(cat => {
-                categoryFilter.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
-                productCategory.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
+                filterSelect.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
+                productSelect.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
             });
         } catch (error) {
             console.error('Error loading categories:', error);
         }
     }
+
+    // Load categories into the Manager Modal List
+    async function loadCategoriesList() {
+        const listContainer = document.getElementById('categoriesList');
+        listContainer.innerHTML = '<div style="padding:20px; text-align:center;">Loading...</div>';
+        
+        try {
+            const response = await apiCall('/api/categories');
+            const data = await response.json();
+            
+            if (data.length === 0) {
+                listContainer.innerHTML = '<div style="padding:20px; text-align:center; color:#777;">No categories found. Add one above!</div>';
+                return;
+            }
+
+            listContainer.innerHTML = data.map(cat => `
+                <div style="display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; align-items: center;">
+                    <span style="font-weight: 500;">${cat.name}</span>
+                    <span style="font-size: 12px; color: #777;">ID: ${cat.id}</span>
+                </div>
+            `).join('');
+            
+        } catch (error) {
+            listContainer.innerHTML = '<div style="color:red; padding:10px;">Error loading list</div>';
+        }
+    }
+
+    // Save a new category
+    async function saveCategory() {
+        const nameInput = document.getElementById('newCategoryName');
+        const name = nameInput.value.trim();
+        
+        if (!name) {
+            alert('Please enter a category name');
+            return;
+        }
+
+        try {
+            const response = await apiCall('/api/categories', {
+                method: 'POST',
+                body: JSON.stringify({ name: name })
+            });
+
+            if (response.ok) {
+                nameInput.value = ''; // Clear input
+                await loadCategoriesList(); // Refresh list in modal
+                await loadCategories(); // Refresh dropdowns in main UI
+                alert('Category Added Successfully!');
+            } else {
+                alert('Error creating category');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to save category');
+        }
+    }
+
+    // --- Warehouse & Product Functions ---
 
     async function loadWarehouses() {
         try {
@@ -415,6 +560,8 @@
         loadProducts();
     }
 
+    // --- Product Modal Functions ---
+
     function openAddProductModal() {
         document.getElementById('modalTitle').textContent = 'Add Product';
         document.getElementById('productForm').reset();
@@ -460,6 +607,7 @@
         }
     }
 
+    // Product Form Submit Handler
     document.getElementById('productForm').addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -493,12 +641,6 @@
         } catch (error) {
             alert('Error saving product');
         }
-    });
-
-    window.addEventListener('DOMContentLoaded', () => {
-        loadCategories();
-        loadWarehouses();
-        loadProducts();
     });
 </script>
 {% endblock %}
