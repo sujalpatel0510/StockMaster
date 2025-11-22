@@ -1,0 +1,504 @@
+{% extends "base.html" %}
+
+{% block title %}Products{% endblock %}
+{% block page_title %}Products Management{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-primary" onclick="openAddProductModal()">
+    ➕ Add Product
+</button>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filters {
+        background: white;
+        padding: 20px;
+        border-radius: 15px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .filter-group label {
+        display: block;
+        margin-bottom: 5px;
+        color: #7f8c8d;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .filter-group input,
+    .filter-group select {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #ecf0f1;
+        border-radius: 8px;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.3s;
+    }
+
+    .filter-group input:focus,
+    .filter-group select:focus {
+        border-color: #667eea;
+    }
+
+    .products-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+    }
+
+    .product-card {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        transition: transform 0.3s;
+    }
+
+    .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .product-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 15px;
+    }
+
+    .product-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 5px;
+    }
+
+    .product-sku {
+        color: #7f8c8d;
+        font-size: 13px;
+    }
+
+    .product-actions {
+        display: flex;
+        gap: 5px;
+    }
+
+    .icon-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: #ecf0f1;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: all 0.3s;
+    }
+
+    .icon-btn:hover {
+        background: #667eea;
+        color: white;
+    }
+
+    .product-info {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #ecf0f1;
+    }
+
+    .info-label {
+        color: #7f8c8d;
+        font-size: 13px;
+    }
+
+    .info-value {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .modal-title {
+        font-size: 22px;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .close-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: #ecf0f1;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 18px;
+        transition: all 0.3s;
+    }
+
+    .close-btn:hover {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #2c3e50;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #ecf0f1;
+        border-radius: 10px;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.3s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        border-color: #667eea;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 25px;
+    }
+
+    .btn-full {
+        flex: 1;
+        padding: 12px;
+    }
+
+    .badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .badge-success { background: #d4edda; color: #155724; }
+    .badge-danger { background: #f8d7da; color: #721c24; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="filters">
+    <div class="filter-group">
+        <label>Search Products</label>
+        <input type="text" id="searchInput" placeholder="Search by name or SKU..." onkeyup="filterProducts()">
+    </div>
+    <div class="filter-group">
+        <label>Category</label>
+        <select id="categoryFilter" onchange="filterProducts()">
+            <option value="">All Categories</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Warehouse</label>
+        <select id="warehouseFilter" onchange="filterProducts()">
+            <option value="">All Warehouses</option>
+        </select>
+    </div>
+</div>
+
+<div class="products-grid" id="productsGrid">
+    <p style="text-align: center; padding: 50px; color: #7f8c8d;">Loading products...</p>
+</div>
+
+<!-- Add/Edit Product Modal -->
+<div class="modal" id="productModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modalTitle">Add Product</h3>
+            <button class="close-btn" onclick="closeProductModal()">✕</button>
+        </div>
+        <form id="productForm">
+            <input type="hidden" id="productId">
+            <div class="form-group">
+                <label>Product Name *</label>
+                <input type="text" id="productName" required>
+            </div>
+            <div class="form-group">
+                <label>SKU *</label>
+                <input type="text" id="productSku" required>
+            </div>
+            <div class="form-group">
+                <label>Category</label>
+                <select id="productCategory">
+                    <option value="">Select Category</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Unit of Measure</label>
+                <input type="text" id="productUnit" placeholder="e.g., Units, Kg, Liters">
+            </div>
+            <div class="form-group">
+                <label>Reorder Level</label>
+                <input type="number" id="productReorder" step="0.01" value="0">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="productDescription" rows="3"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary btn-full" onclick="closeProductModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-full">Save Product</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let allProducts = [];
+    let categories = [];
+    let warehouses = [];
+
+    async function loadCategories() {
+        try {
+            const response = await apiCall('/api/categories');
+            categories = await response.json();
+            
+            const categoryFilter = document.getElementById('categoryFilter');
+            const productCategory = document.getElementById('productCategory');
+            
+            categories.forEach(cat => {
+                categoryFilter.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
+                productCategory.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
+            });
+        } catch (error) {
+            console.error('Error loading categories:', error);
+        }
+    }
+
+    async function loadWarehouses() {
+        try {
+            const response = await apiCall('/api/warehouses');
+            warehouses = await response.json();
+            
+            const warehouseFilter = document.getElementById('warehouseFilter');
+            warehouses.forEach(wh => {
+                warehouseFilter.innerHTML += `<option value="${wh.id}">${wh.name}</option>`;
+            });
+        } catch (error) {
+            console.error('Error loading warehouses:', error);
+        }
+    }
+
+    async function loadProducts() {
+        try {
+            const search = document.getElementById('searchInput').value;
+            const category = document.getElementById('categoryFilter').value;
+            const warehouse = document.getElementById('warehouseFilter').value;
+
+            let url = '/api/products?';
+            if (search) url += `search=${search}&`;
+            if (category) url += `category_id=${category}&`;
+            if (warehouse) url += `warehouse_id=${warehouse}&`;
+
+            const response = await apiCall(url);
+            allProducts = await response.json();
+
+            displayProducts(allProducts);
+        } catch (error) {
+            console.error('Error loading products:', error);
+        }
+    }
+
+    function displayProducts(products) {
+        const grid = document.getElementById('productsGrid');
+        
+        if (products.length === 0) {
+            grid.innerHTML = '<p style="text-align: center; padding: 50px; color: #7f8c8d;">No products found</p>';
+            return;
+        }
+
+        grid.innerHTML = products.map(product => `
+            <div class="product-card">
+                <div class="product-header">
+                    <div>
+                        <div class="product-title">${product.name}</div>
+                        <div class="product-sku">SKU: ${product.sku}</div>
+                    </div>
+                    <div class="product-actions">
+                        <button class="icon-btn" onclick="editProduct(${product.id})" title="Edit">✏️</button>
+                        <button class="icon-btn" onclick="deleteProduct(${product.id})" title="Delete">🗑️</button>
+                    </div>
+                </div>
+                <div class="product-info">
+                    <div class="info-row">
+                        <span class="info-label">Category:</span>
+                        <span class="info-value">${product.category ? product.category.name : 'N/A'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Unit:</span>
+                        <span class="info-value">${product.unit_of_measure}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Reorder Level:</span>
+                        <span class="info-value">${product.reorder_level}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Status:</span>
+                        <span class="badge ${product.is_active ? 'badge-success' : 'badge-danger'}">
+                            ${product.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function filterProducts() {
+        loadProducts();
+    }
+
+    function openAddProductModal() {
+        document.getElementById('modalTitle').textContent = 'Add Product';
+        document.getElementById('productForm').reset();
+        document.getElementById('productId').value = '';
+        document.getElementById('productModal').classList.add('active');
+    }
+
+    function closeProductModal() {
+        document.getElementById('productModal').classList.remove('active');
+    }
+
+    async function editProduct(id) {
+        try {
+            const response = await apiCall(`/api/products/${id}`);
+            const product = await response.json();
+
+            document.getElementById('modalTitle').textContent = 'Edit Product';
+            document.getElementById('productId').value = product.id;
+            document.getElementById('productName').value = product.name;
+            document.getElementById('productSku').value = product.sku;
+            document.getElementById('productCategory').value = product.category_id || '';
+            document.getElementById('productUnit').value = product.unit_of_measure;
+            document.getElementById('productReorder').value = product.reorder_level;
+            document.getElementById('productDescription').value = product.description || '';
+
+            document.getElementById('productModal').classList.add('active');
+        } catch (error) {
+            alert('Error loading product details');
+        }
+    }
+
+    async function deleteProduct(id) {
+        if (!confirm('Are you sure you want to delete this product?')) return;
+
+        try {
+            const response = await apiCall(`/api/products/${id}`, { method: 'DELETE' });
+            if (response.ok) {
+                alert('Product deleted successfully');
+                loadProducts();
+            }
+        } catch (error) {
+            alert('Error deleting product');
+        }
+    }
+
+    document.getElementById('productForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const id = document.getElementById('productId').value;
+        const data = {
+            name: document.getElementById('productName').value,
+            sku: document.getElementById('productSku').value,
+            category_id: document.getElementById('productCategory').value || null,
+            unit_of_measure: document.getElementById('productUnit').value || 'Units',
+            reorder_level: parseFloat(document.getElementById('productReorder').value) || 0,
+            description: document.getElementById('productDescription').value
+        };
+
+        try {
+            const url = id ? `/api/products/${id}` : '/api/products';
+            const method = id ? 'PUT' : 'POST';
+
+            const response = await apiCall(url, {
+                method: method,
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                alert(id ? 'Product updated successfully' : 'Product created successfully');
+                closeProductModal();
+                loadProducts();
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Error saving product');
+            }
+        } catch (error) {
+            alert('Error saving product');
+        }
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+        loadCategories();
+        loadWarehouses();
+        loadProducts();
+    });
+</script>
+{% endblock %}
